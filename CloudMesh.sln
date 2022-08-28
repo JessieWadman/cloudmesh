@@ -5,7 +5,7 @@ VisualStudioVersion = 17.2.32526.322
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.Actors", "src\CloudMesh.Actors\CloudMesh.Actors.csproj", "{2A1A06AA-EB37-4DEE-8305-BB3358CB2D50}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.Actors.Aws", "src\CloudMesh.Actors.Aws\CloudMesh.Actors.Aws.csproj", "{B89EF5C8-33B2-4FAE-AACF-01D4171054D0}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.Actors.Aws", "src\CloudMesh.Actors.Aws\CloudMesh.Actors.Aws.csproj", "{B89EF5C8-33B2-4FAE-AACF-01D4171054D0}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A96A479E-9685-4C75-B033-3A375E2AB57D}"
 EndProject
@@ -13,13 +13,20 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{96
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EcsActors", "EcsActors", "{7450678E-B56E-4507-A372-9F21AEE458C6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EcsActorsExample", "examples\EcsActors\src\EcsActorsExample\EcsActorsExample.csproj", "{8D33DB79-3E9A-4516-8870-837A8264800D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EcsActorsExample", "examples\EcsActors\src\EcsActorsExample\EcsActorsExample.csproj", "{8D33DB79-3E9A-4516-8870-837A8264800D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LambdaCallerExample", "examples\EcsActors\src\LambdaCallerExample\LambdaCallerExample.csproj", "{4CAAEA54-05C7-472F-AC1F-8206EA7AD9C0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EcsActorsExample.Contracts", "examples\EcsActors\src\EcsActorsExample.Contracts\EcsActorsExample.Contracts.csproj", "{26A2975B-0176-4EBB-96C5-962C4368E5F9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EcsActorsExample.Contracts", "examples\EcsActors\src\EcsActorsExample.Contracts\EcsActorsExample.Contracts.csproj", "{26A2975B-0176-4EBB-96C5-962C4368E5F9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.Actors.Hosting", "src\CloudMesh.Actors.Hosting\CloudMesh.Actors.Hosting.csproj", "{3C073409-6839-40DE-BE1F-41F39BB0A2F3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.Actors.Hosting", "src\CloudMesh.Actors.Hosting\CloudMesh.Actors.Hosting.csproj", "{3C073409-6839-40DE-BE1F-41F39BB0A2F3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{4389C075-457C-493B-AE12-FF626CFAB1BC}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{E836A1B1-92CA-465B-AC15-348A70875A33}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\publish.yml = .github\workflows\publish.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -63,6 +70,7 @@ Global
 		{4CAAEA54-05C7-472F-AC1F-8206EA7AD9C0} = {7450678E-B56E-4507-A372-9F21AEE458C6}
 		{26A2975B-0176-4EBB-96C5-962C4368E5F9} = {7450678E-B56E-4507-A372-9F21AEE458C6}
 		{3C073409-6839-40DE-BE1F-41F39BB0A2F3} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
+		{E836A1B1-92CA-465B-AC15-348A70875A33} = {4389C075-457C-493B-AE12-FF626CFAB1BC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1B0642CC-1BC5-42D7-9CE3-87B1D1080B36}
