@@ -1,8 +1,7 @@
 name: Publish to Nuget
 on:
-  push:
-    branches:
-      - main # Default release branch, may also be named 'master' or 'develop'
+  release:
+    types: [published]
 jobs:
   publish:
     name: build, pack & publish
@@ -18,25 +17,20 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v1
 
-    
-
-    - name: Get Build Version
-      run: |
-        Import-Module .\build\GetBuildVersion.psm1
-        Write-Host $Env:GITHUB_REF
-        $version = GetBuildVersion -VersionString $Env:GITHUB_REF
-        echo "BUILD_VERSION=$version" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
-      shell: pwsh
-
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v1.0.5
 
     - name: .NET Build Actors
       run: dotnet build src/CloudMesh.Actors/CloudMesh.Actors.csproj -c Release -p:Version=$BUILD_VERSION /p:CI=true
 
-    - name: Publish
-      if: startsWith(github.ref, 'refs/heads/release')
-      run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{secrets.NUGET_KEY}}
+    - name: Publish CloudMesh.Actors
+      uses: brandedoutcast/publish-nuget@v2.5.2
+      with:
+          PROJECT_FILE_PATH: src/CloudMesh.Actors/CloudMesh.Actors.csproj
+          NUGET_KEY: ${{secrets.NUGET_KEY}}
+    # - name: Publish
+    #  if: startsWith(github.ref, 'refs/heads/release')
+    #  run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{secrets.NUGET_KEY}}
     
     #- name: .NET Lib Pack
     #  run: dotnet pack src/CloudMesh.Actors/CloudMesh.Actors.csproj --no-build -c Release /p:PackageOutputPath=%CD%\.nupkgs /p:CI=true
