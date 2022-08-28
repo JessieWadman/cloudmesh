@@ -21,9 +21,6 @@ jobs:
     - name: .NET Build Actors
       run: dotnet build src/CloudMesh.Actors/CloudMesh.Actors.csproj -c Release /p:CI=true
 
-    - name: Package NuGets
-      run: dotnet pack src/CloudMesh.Actors/CloudMesh.Actors.csproj --no-build -c Release /p:PackageOutputPath=%CD%\.nupkgs /p:CI=true
-
     - name: Publish
-      run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -ApiKey ${{secrets.NUGET_KEY}}
+      run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -SkipDuplicate -ApiKey ${{secrets.NUGET_KEY}}
     
