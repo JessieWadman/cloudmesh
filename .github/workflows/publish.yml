@@ -22,6 +22,6 @@ jobs:
     - name: What is here
       run: ls -la
     - name: .NET Build Actors
-      run: dotnet build src/CloudMesh.Actors.csproj -c Release /p:CI=true
+      run: dotnet build src/CloudMesh.Actors/CloudMesh.Actors.csproj -c Release /p:CI=true
     - name: .NET Lib Pack
-      run: dotnet pack src/CloudMesh.Actors.csproj --no-build -c Release /p:PackageOutputPath=%CD%\.nupkgs /p:CI=true
+      run: dotnet pack src/CloudMesh.Actors/CloudMesh.Actors.csproj --no-build -c Release /p:PackageOutputPath=%CD%\.nupkgs /p:CI=true
