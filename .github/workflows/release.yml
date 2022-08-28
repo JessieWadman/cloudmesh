@@ -21,7 +21,7 @@ jobs:
       uses: NuGet/setup-nuget@v1.0.5
 
     - name: .NET Build Actors
-      run: dotnet build src/CloudMesh.Actors/CloudMesh.Actors.csproj -c Release -p:Version=$BUILD_VERSION /p:CI=true
+      run: dotnet build src/CloudMesh.Actors/CloudMesh.Actors.csproj -c Release /p:CI=true
 
     - name: Publish CloudMesh.Actors
       uses: brandedoutcast/publish-nuget@v2.5.2
