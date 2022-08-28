@@ -17,6 +17,10 @@ jobs:
 
     - name: Checkout code
       uses: actions/checkout@v1
+    - name: Where am I
+      run: pwd
+    - name: What is here
+      run: ls -la
     - name: .NET Build Actors
       run: dotnet build src/CloudMesh.Actors.csproj -c Release /p:CI=true
     - name: .NET Lib Pack
