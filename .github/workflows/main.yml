@@ -25,7 +25,7 @@ jobs:
       run: dotnet build src/CloudMesh.Actors.Aws/CloudMesh.Actors.Aws.csproj -c Release /p:CI=true
 
     - name: Build CloudMesh.Actors.Hosting
-      run: dotnet build src/CloudMesh.Actors.Aws/CloudMesh.Actors.Hosting.csproj -c Release /p:CI=true
+      run: dotnet build src/CloudMesh.Actors.Hosting/CloudMesh.Actors.Hosting.csproj -c Release /p:CI=true
 
     - name: Publish
       run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -SkipDuplicate -ApiKey ${{secrets.NUGET_KEY}}
