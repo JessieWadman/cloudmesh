@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Authors>Jessie Wadman</Authors>
+    <Company>Open Source</Company>
+    <Product>CloudMesh</Product>
+    <Description>AWS ECS hosting for minimalactor system</Description>
+    <Copyright>MIT</Copyright>
+    <PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CloudMesh.Actors\CloudMesh.Actors.csproj" />
+  </ItemGroup>
+
+</Project>
