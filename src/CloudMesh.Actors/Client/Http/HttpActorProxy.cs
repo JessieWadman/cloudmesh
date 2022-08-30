@@ -1,6 +1,7 @@
 ﻿using CloudMesh.Actors.Hosting;
 using CloudMesh.Actors.Routing;
 using CloudMesh.Actors.Serialization;
+using CloudMesh.Actors.Utils;
 using System.Net;
 using System.Net.Http.Json;
 using System.Reflection;
@@ -28,15 +29,14 @@ namespace CloudMesh.Actors.Client.Http
                 throw new ArgumentNullException(nameof(method));
 
             arguments ??= Array.Empty<object>();
-            var returnType = method.ReturnType;
-            var expectsTask = typeof(Task).IsAssignableFrom(method.ReturnType);
-            if (expectsTask)
-            {
-                if (method.ReturnType.GenericTypeArguments.Length == 0)
-                    returnType = typeof(NoReturnType);
-                else
-                    returnType = method.ReturnType.GenericTypeArguments[0];
-            }
+            
+            var expectsTask = MethodCache.TryGetTaskType(method, out var returnType);
+            var isVoidTask = expectsTask && returnType == typeof(void);
+            if (!expectsTask || returnType is null)
+                returnType = method.ReturnType;
+            else if (returnType == typeof(void))
+                returnType = NoReturnType.Type;
+            
 
             Task<object?> asyncInvocation;
 
@@ -45,7 +45,7 @@ namespace CloudMesh.Actors.Client.Http
             else
                 asyncInvocation = InvokeLocalMaybe();
 
-            if (typeof(Task).IsAssignableFrom(method.ReturnType))
+            if (expectsTask)
                 return TaskConverter.Convert(asyncInvocation, returnType);
             else
                 return asyncInvocation.GetAwaiter().GetResult();
@@ -66,7 +66,7 @@ namespace CloudMesh.Actors.Client.Http
                     LocalActorHost.TryGetHostedActor(ActorName, Id, out var localActor) &&
                     localActor is not null)
                 {
-                    var call = localActor.InvokeAsync(method.Name, arguments, ActorAddress.Local, default);
+                    var call = localActor.InvokeAsync(method.Name, arguments, ActorAddress.Local, !isVoidTask, default);
                     return call;
                 }
 

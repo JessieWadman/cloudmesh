@@ -1,4 +1,4 @@
-﻿using CloudMesh.Actors.Utils;
+﻿using CloudMesh.Utils;
 using Microsoft.Extensions.Hosting;
 
 namespace CloudMesh.Actors.Singletons

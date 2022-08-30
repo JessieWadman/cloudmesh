@@ -3,12 +3,18 @@ on:
   push:
     branches:
       - main # Default release branch, may also be named 'master' or 'develop'
+
+env: 
+  VERSION: 1.0.$env.GITHUB_RUN_NUMBER
+
 jobs:
   publish:
     name: Build & Pack
     runs-on: ubuntu-latest
     steps:
       
+    - name: Print version
+      run: echo $env:VERSION
 
       # - name: Setup dotnet
       #   uses: actions/setup-dotnet@v1
@@ -18,14 +24,23 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v1
 
+    - name: Build Core
+      run: dotnet build src/CloudMesh.Core/CloudMesh.Core.csproj -c Release /p:CI=true /p:Version=$env:GITHUB_RUN_NUMBER
+
     - name: Build Actors
-      run: dotnet build src/CloudMesh.Actors/CloudMesh.Actors.csproj -c Release /p:CI=true
+      run: dotnet build src/CloudMesh.Actors/CloudMesh.Actors.csproj -c Release /p:CI=true /p:Version=$env:GITHUB_RUN_NUMBER
 
     - name: Build Actors.Aws
-      run: dotnet build src/CloudMesh.Actors.Aws/CloudMesh.Actors.Aws.csproj -c Release /p:CI=true
+      run: dotnet build src/CloudMesh.Actors.Aws/CloudMesh.Actors.Aws.csproj -c Release /p:CI=true /p:Version=$env:GITHUB_RUN_NUMBER
 
     - name: Build CloudMesh.Actors.Hosting
-      run: dotnet build src/CloudMesh.Actors.Hosting/CloudMesh.Actors.Hosting.csproj -c Release /p:CI=true
+      run: dotnet build src/CloudMesh.Actors.Hosting/CloudMesh.Actors.Hosting.csproj -c Release /p:CI=true /p:Version=$env:GITHUB_RUN_NUMBER
+
+    - name: Build CloudMesh.DataBlocks
+      run: dotnet build src/CloudMesh.DataBlocks/CloudMesh.DataBlocks.csproj -c Release /p:CI=true /p:Version=$env:GITHUB_RUN_NUMBER
+
+    - name: Build CloudMesh.Persistence.DynamoDB
+      run: dotnet build src/CloudMesh.Persistence.DynamoDB/CloudMesh.Persistence.DynamoDB.csproj -c Release /p:CI=true /p:Version=$env:GITHUB_RUN_NUMBER
 
     - name: Publish
       run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -SkipDuplicate -ApiKey ${{secrets.NUGET_KEY}}

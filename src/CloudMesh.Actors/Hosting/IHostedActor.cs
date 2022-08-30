@@ -24,7 +24,13 @@ namespace CloudMesh.Actors.Hosting
 
     public static class HostedActorExtensions
     {
-        public static async Task<object?> InvokeAsync(this IHostedActor actor, string methodName, object[]? args, ActorAddress sender, CancellationToken cancellationToken)
+        public static async Task<object?> InvokeAsync(
+            this IHostedActor actor, 
+            string methodName, 
+            object[]? args, 
+            ActorAddress sender, 
+            bool waitForCompletion,
+            CancellationToken cancellationToken)
         {
             var envelope = new Envelope(methodName, args, sender);
             var inbox = actor.GetInbox();
@@ -33,6 +39,9 @@ namespace CloudMesh.Actors.Hosting
                 BackpressureMonitor.BackpressureDetected(actor.ActorName, actor.Id);
                 await inbox.Writer.WriteAsync(envelope, cancellationToken);                
             }
+
+            if (!waitForCompletion)
+                return NoReturnType.Instance;
 
             var task = envelope.Completion.Task;
             await task;

@@ -1,30 +1,24 @@
-﻿using CloudMesh.Actors.Hosting;
-
-namespace CloudMesh.Actors.Scheduling
+﻿namespace CloudMesh.DataBlocks
 {
     public interface ICancelable
     {
         void Cancel();
     }
 
-    public static class Scheduler
+    public static class DataBlockScheduler
     {
-        public static void ScheduleOnce<T>(IActor target, TimeSpan delay, string methodName, params object[] args)
+        public static void ScheduleTellOnce(ICanSubmit target, TimeSpan delay, object message, IDataBlockRef sender)
         {
-            var hostedActor = target as IHostedActor ?? throw new InvalidOperationException("Actor must inherit from class Actor for scheduler to work.");
-
             _ = Task.Run(async () =>
             {
                 if (delay != TimeSpan.Zero)
                     await Task.Delay(delay);
-                await hostedActor.InvokeAsync(methodName, args, ActorAddress.Local, false, default);
+                await target.SubmitAsync(message, sender);
             }).ConfigureAwait(false);
         }
 
-        public static ICancelable ScheduleOnceCancelable(IActor target, TimeSpan delay, string methodName, params object[] args)
+        public static ICancelable ScheduleTellOnceCancelable(ICanSubmit target, TimeSpan delay, object message, IDataBlockRef sender)
         {
-            var hostedActor = target as IHostedActor ?? throw new InvalidOperationException("Actor must inherit from class Actor for scheduler to work.");
-
             var cancelation = new Cancelable();
             var stoppingToken = cancelation.Token;
 
@@ -36,7 +30,7 @@ namespace CloudMesh.Actors.Scheduling
                     {
                         await Task.Delay(delay, stoppingToken);
                         if (!stoppingToken.IsCancellationRequested)
-                            await hostedActor.InvokeAsync(methodName, args, ActorAddress.Local, false, default);
+                            await target.SubmitAsync(message, sender);
                     }
                     catch (TaskCanceledException)
                     {
@@ -47,10 +41,8 @@ namespace CloudMesh.Actors.Scheduling
             return cancelation;
         }
 
-        public static ICancelable ScheduleRepeatedly(IActor target, TimeSpan frequency, string methodName, params object[] args)
+        public static ICancelable ScheduleTellRepeatedly(ICanSubmit target, TimeSpan frequency, object message, IDataBlockRef sender)
         {
-            var hostedActor = target as IHostedActor ?? throw new InvalidOperationException("Actor must inherit from class Actor for scheduler to work.");
-
             var cancelation = new Cancelable();
             var stoppingToken = cancelation.Token;
 
@@ -60,18 +52,11 @@ namespace CloudMesh.Actors.Scheduling
                 {
                     try
                     {
-                        var nextCall = DateTime.Now + frequency;
                         while (!stoppingToken.IsCancellationRequested)
                         {
-                            var remainingTime = nextCall - DateTime.Now;
-                            await Task.Delay(remainingTime, stoppingToken);
+                            await Task.Delay(frequency, stoppingToken);
                             if (!stoppingToken.IsCancellationRequested)
-                            {
-                                // We wait for completion to prevent overlapping calls in buffered mailboxes that might
-                                // queue up lots of requests and not be able to keep up
-                                await hostedActor.InvokeAsync(methodName, args, ActorAddress.Local, true, default);
-                                nextCall += frequency;
-                            }
+                                await target.SubmitAsync(message, sender);
                         }
                     }
                     catch (TaskCanceledException)

@@ -27,6 +27,53 @@ namespace CloudMesh.Actors.Utils
                 return methodParameterTypes;
             });
         }
+
+        private static readonly Type taskType = typeof(Task);
+
+        public static bool IsVoidType(this MethodInfo? method)
+        {
+            if (method is null)
+                return true;
+            if (method.ReturnType == typeof(void) || method.ReturnType == typeof(NoReturnType) ||
+                method.ReturnType == taskType)
+                return true;
+            return false;
+        }
+
+        public static bool TryGetTaskType(this MethodInfo? method, out Type? returnType)
+        {
+            returnType = null;
+            if (method is null)
+                return false;
+
+            if (!taskType.IsAssignableFrom(method.ReturnType))
+                return false;
+
+            if (method.ReturnType.GenericTypeArguments.Length == 0)
+            {
+                returnType = typeof(void);
+                return true;
+            }
+
+            returnType = method.ReturnType.GenericTypeArguments[0];
+            return true;
+        }
+
+        public static Type GetMaybeTaskReturnType(this MethodInfo method, out bool isTask, out bool isVoidType)
+        {
+            if (TryGetTaskType(method, out var returnType) && returnType is not null)
+            {
+                isTask = true;
+                isVoidType = returnType == typeof(void);
+                return returnType;
+            }
+            else
+            {
+                isTask = false;
+                isVoidType = returnType == typeof(void);
+                return method.ReturnType;
+            }
+        }
     }
 
     public class MethodCache<T>

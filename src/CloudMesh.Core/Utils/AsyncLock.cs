@@ -1,11 +1,11 @@
 ﻿using System.Diagnostics;
 using System.Runtime.ExceptionServices;
 
-namespace CloudMesh.Actors.Utils
+namespace CloudMesh.Utils
 {
     public class AsyncLock
     {
-        private SemaphoreSlim _reentrancy = new SemaphoreSlim(1, 1);
+        private SemaphoreSlim _reentrancy = new(1, 1);
         private int _reentrances = 0;
         // We are using this SemaphoreSlim like a posix condition variable.
         // We only want to wake waiters, one or more of whom will try to obtain
@@ -13,7 +13,7 @@ namespace CloudMesh.Actors.Utils
         // wakes are missed, the number of awakees is not important.
         // Ideally, this would be "friend" for access only from InnerLock, but
         // whatever.
-        internal SemaphoreSlim _retry = new SemaphoreSlim(0, 1);
+        internal SemaphoreSlim _retry = new(0, 1);
         private const long UnlockedId = 0x00; // "owning" task id when unlocked
         internal long _owningId = UnlockedId;
         internal int _owningThreadId = (int)UnlockedId;

@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
 		<TargetFramework>net6.0</TargetFramework>
@@ -13,20 +13,12 @@
 		<Copyright>MIT</Copyright>
 		<PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
+		<RootNamespace>CloudMesh</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="AWSSDK.DynamoDBv2" Version="3.7.4" />
-		<PackageReference Include="AWSSDK.ServiceDiscovery" Version="3.7.3" />
-		<PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.2.0" />
-		<PackageReference Include="Microsoft.AspNetCore.Routing" Version="2.2.2" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
-		<PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <ProjectReference Include="..\CloudMesh.Core\CloudMesh.Core.csproj" />
 	</ItemGroup>
 
 </Project>

@@ -43,15 +43,11 @@ namespace CloudMesh.Actors.Hosting.Handler
             }
 
             logger.LogDebug($"Invoking {actorName}/{id}/{methodName}");
-            var returnType = method.ReturnType.GenericTypeArguments.Length > 0 
-                ? method.ReturnType.GenericTypeArguments[0]
-                : typeof(NoReturnType);
+            var returnType = MethodCache.GetMaybeTaskReturnType(method, out var returnsTask, out var returnsVoid);
 
             var sender = new ActorAddress(context.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "0.0.0.0");
 
-            if (returnType == typeof(void))
-                returnType = typeof(NoReturnType);
-            var retValue = await hostedActor.InvokeAsync(methodName, args, sender, default);
+            var retValue = await hostedActor.InvokeAsync(methodName, args, sender, !returnsVoid, default);
 
             if (retValue == null || retValue is NoReturnType)
             {

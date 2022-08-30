@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace CloudMesh.Actors.Utils
+namespace CloudMesh.Utils
 {
     /// <summary>
     /// Implements the 64 bit A version of the murmur2 hash
