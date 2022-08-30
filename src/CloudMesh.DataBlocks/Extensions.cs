@@ -13,8 +13,7 @@ namespace CloudMesh.DataBlocks
         public static IDataBlock InitializeDataBlock<T>(
             this IDataBlockContainer container,
             Expression<Func<T>> newExpression,
-            string? name,
-            bool useBufferedLogging = false)
+            string? name)
             where T : IDataBlock
         {
             var objectType = typeof(T);

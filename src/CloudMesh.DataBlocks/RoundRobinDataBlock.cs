@@ -10,15 +10,15 @@ namespace CloudMesh.DataBlocks
         {
         }
 
-        public void AddTarget<T>(Expression<Func<T>> newExpression, bool useBufferedLogging = false) where T : IDataBlock
+        public void AddTarget<T>(Expression<Func<T>> newExpression) where T : IDataBlock
         {
-            ChildOf(newExpression, $"{Children.Count()}", useBufferedLogging);
+            ChildOf(newExpression, $"{Children.Count()}");
         }
 
-        public void AddTargets<T>(Expression<Func<T>> newExpression, int count, bool useBufferedLogging = false) where T : IDataBlock
+        public void AddTargets<T>(Expression<Func<T>> newExpression, int count) where T : IDataBlock
         {
             for (int i = 0; i < count; i++)
-                AddTarget(newExpression, useBufferedLogging);
+                AddTarget(newExpression);
         }
 
         protected override ValueTask BeforeStart()

@@ -104,18 +104,27 @@ namespace CloudMesh.DataBlocks
 
         protected IEnumerable<IDataBlock> Children => children;
 
-        protected IDataBlock ChildOf<T>(Expression<Func<T>> newExpression, string? name = null, bool useBufferedLogging = false)
+        protected IDataBlock ChildOf<T>(Expression<Func<T>> newExpression, string? name = null)
             where T : IDataBlock
         {
             if (completed)
                 throw new ObjectDisposedException(GetType().Name);
-            var dataBlock = this.InitializeDataBlock(newExpression, name, useBufferedLogging);
+            var dataBlock = this.InitializeDataBlock(newExpression, name);
             children.Add(dataBlock);
             return dataBlock;
         }
 
-        IDataBlock IDataBlockContainer.ChildOf<T>(Expression<Func<T>> newExpression, string? name, bool useBufferedLogging)
-            => ChildOf(newExpression, name, useBufferedLogging);
+        IDataBlock IDataBlockContainer.ChildOf<T>(Expression<Func<T>> newExpression, string? name)
+            => ChildOf(newExpression, name);
+
+        protected IDataBlock? GetChild(string name)
+            => children.FirstOrDefault(c => c.Name == name);
+
+        protected IDataBlock GetOrAddChild<T>(string name, Expression<Func<T>> newExpression)
+            where T : IDataBlock
+        {
+            return GetChild(name) ?? ChildOf(newExpression, name);
+        }
 
         protected void ReceiveAsync<T>(Func<T, ValueTask<bool>> handler)
         {
