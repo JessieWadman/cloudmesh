@@ -1,6 +1,0 @@
-<Target Name="CustomVersion" AfterTargets="MinVer">
-    <PropertyGroup>
-      <FileVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)</FileVersion>
-      <AssemblyVersion>$(MinVerMajor).$(MinVerMinor).$(MinVerPatch)</AssemblyVersion>
-    </PropertyGroup>
-  </Target>
