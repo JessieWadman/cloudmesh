@@ -5,8 +5,7 @@ on:
       - main # Default release branch, may also be named 'master' or 'develop'
 
 env: 
-  MAJOR_VERSION: '1.0'
-  VERSION: '${{env:MAJOR_VERSION}}.{{$env:GITHUB_RUN_NUMBER}}'
+  VERSION: '1.0.${{env:MAJOR_VERSION}}.{{$env:GITHUB_RUN_NUMBER}}'
 
 jobs:
   publish:
