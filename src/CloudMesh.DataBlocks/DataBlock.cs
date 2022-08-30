@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using CloudMesh.Utils;
+using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -43,11 +44,11 @@ namespace CloudMesh.DataBlocks
         ValueTask StopAsync();
     }
 
-    public abstract class DataBlock : 
-        IDataBlock, 
-        IDataBlockContainer, 
-        IDataBlockInitializer, 
-        IAsyncDisposable, 
+    public abstract class DataBlock :
+        IDataBlock,
+        IDataBlockContainer,
+        IDataBlockInitializer,
+        IAsyncDisposable,
         IDisposable
     {
         private readonly Channel<Envelope> inbox;
@@ -55,6 +56,7 @@ namespace CloudMesh.DataBlocks
         private readonly Dictionary<Type, Func<object, ValueTask<bool>>> handlers = new();
         private readonly Task completion;
         private bool completed;
+        private TimeSpan? idleTimeout;
 
         public string Name { get; private set; }
         public IDataBlockRef Parent { get; private set; }
@@ -126,6 +128,12 @@ namespace CloudMesh.DataBlocks
             return GetChild(name) ?? ChildOf(newExpression, name);
         }
 
+        public void Become(Action behavior)
+        {
+            handlers.Clear();
+            behavior();
+        }
+
         protected void ReceiveAsync<T>(Func<T, ValueTask<bool>> handler)
         {
             if (typeof(T) == typeof(Any))
@@ -167,34 +175,68 @@ namespace CloudMesh.DataBlocks
         protected virtual ValueTask BeforeStart() => TaskHelper.CompletedTask;
         protected virtual ValueTask AfterStop() => TaskHelper.CompletedTask;
 
+        protected void SetIdleTimeout(TimeSpan idleTimeout)
+        {
+            this.idleTimeout = idleTimeout;
+        }
+
         private async Task RunAsync()
         {
             await BeforeStart();
 
             var hasAnyHandler = handlers.TryGetValue(typeof(Any), out var anyHandler);
 
-            await foreach (var item in inbox.Reader.ReadAllAsync())
+            while (true)
             {
-                if (item.Message is null)
-                    continue;
-
-                Sender = item.Sender;
-
-                var messageType = item.Message.GetType();
-                if (!TryGetHandler(messageType, out var handler) || handler is null)
+                try
                 {
-                    Unhandled(item);
+                    await foreach (var item in inbox.Reader.ReadAllAsync(idleTimeout ?? TimeSpan.MaxValue))
+                    {
+                        if (item.Message is null)
+                            continue;
+
+                        Sender = item.Sender;
+
+                        var messageType = item.Message.GetType();
+                        if (!TryGetHandler(messageType, out var handler) || handler is null)
+                        {
+                            try
+                            {
+                                Unhandled(item);
+                            }
+                            catch { }
+                        }
+                        else
+                        {
+                            bool success = false;
+                            try
+                            {
+                                var handlerOp = handler(item.Message);
+                                if (handlerOp.IsCompleted)
+                                    success = handlerOp.Result;
+                                else
+                                    success = await handlerOp;
+                            }
+                            catch (Exception ex)
+                            {
+                                Stop();
+                                Console.WriteLine($"UNHANDLED EXCEPTION IN {Path}: {ex}");
+                            }
+                            if (!success)
+                            {
+                                try
+                                {
+                                    Unhandled(item);
+                                }
+                                catch { }
+                            }
+                        }
+                    }
+                    break;
                 }
-                else
+                catch (TimeoutException)
                 {
-                    var handlerOp = handler(item.Message);
-                    bool success;
-                    if (handlerOp.IsCompleted)
-                        success = handlerOp.Result;
-                    else
-                        success = await handlerOp;
-                    if (!success)
-                        Unhandled(item);
+                    Stop();
                 }
             }
 
@@ -227,8 +269,11 @@ namespace CloudMesh.DataBlocks
                 children.Remove(child);
         }
 
+        private AsyncLock stopLocker = new();
+
         public async ValueTask StopAsync()
         {
+            using var _ = await stopLocker.LockAsync();
             if (completed)
                 return;
 
@@ -283,7 +328,7 @@ namespace CloudMesh.DataBlocks
                     BackpressureMonitor.OnBackpressureDetected?.Invoke(Path);
                 }
                 catch { }
-                
+
                 return inbox.Writer.WriteAsync(envelope);
             }
             return TaskHelper.CompletedTask;
@@ -300,7 +345,7 @@ namespace CloudMesh.DataBlocks
             await StopAsync();
             Dispose(true);
         }
-            
+
 
         protected virtual void Dispose(bool disposeManagedResources)
         {
