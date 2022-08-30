@@ -9,6 +9,8 @@ namespace CloudMesh.DataBlocks.Tests
 
             public TimeoutTestBlock()
             {
+                SetIdleTimeout(TimeSpan.FromMilliseconds(300));
+
                 ReceiveAsync<string>(async _ =>
                 {
                     await Task.Delay(100);
@@ -17,7 +19,7 @@ namespace CloudMesh.DataBlocks.Tests
 
             protected override ValueTask BeforeStart()
             {
-                SetIdleTimeout(TimeSpan.FromMilliseconds(300));
+                
                 return ValueTask.CompletedTask;
             }
 

@@ -190,7 +190,7 @@ namespace CloudMesh.DataBlocks
             {
                 try
                 {
-                    await foreach (var item in inbox.Reader.ReadAllAsync(idleTimeout ?? TimeSpan.MaxValue))
+                    await foreach (var item in inbox.Reader.ReadAllAsync(idleTimeout))
                     {
                         if (item.Message is null)
                             continue;
