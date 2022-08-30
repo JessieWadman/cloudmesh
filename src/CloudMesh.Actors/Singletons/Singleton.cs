@@ -9,7 +9,7 @@ namespace CloudMesh.Actors.Singletons
         private static readonly TimeSpan retryAcquireLeaseFrequency = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan updateLeaseLockFrequency = TimeSpan.FromSeconds(10);
 
-
+        private readonly ISingletonLeaseProvider singletonLeaseProvider;
         private Task completion;
         protected readonly string SingletonName;
         private readonly CancellationTokenSource stoppingTokenSource = new();
@@ -20,6 +20,7 @@ namespace CloudMesh.Actors.Singletons
 
         protected Singleton(string? singletonName = null)
         {
+            this.singletonLeaseProvider = SingletonLease.Instance ?? throw new InvalidOperationException("Singleton lease provider not configured. Did you forget to call services.AddSingletonLeaseProvider(...)?");
             this.SingletonName = singletonName ?? GetType().Name;
         }
 
@@ -60,7 +61,7 @@ namespace CloudMesh.Actors.Singletons
             // Repeatedly try to acquire lease until it's acquired or stoppingToken is flagged.
             while (!stoppingToken.IsCancellationRequested)
             {
-                lease = await SingletonLease.TryAcquire(SingletonName, leaseDuration, stoppingToken, InstanceId);
+                lease = await singletonLeaseProvider.TryAcquire(SingletonName, leaseDuration, stoppingToken, InstanceId);
                 if (lease is not null)
                     break;
                 await Task.Delay(retryAcquireLeaseFrequency, stoppingToken);
