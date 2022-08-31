@@ -56,6 +56,7 @@ namespace CloudMesh.DataBlocks
         private readonly Dictionary<Type, Func<object, ValueTask<bool>>> handlers = new();
         private readonly Task completion;
         private bool completed;
+        private bool stopping;
         private TimeSpan? idleTimeout;
 
         public string Name { get; private set; }
@@ -104,7 +105,14 @@ namespace CloudMesh.DataBlocks
         {
         }
 
-        protected IEnumerable<IDataBlock> Children => children;
+        protected IEnumerable<IDataBlock> Children 
+        {
+            get
+            {
+                var result = children.ToArray();
+                return result;
+            }
+        }
 
         protected IDataBlock ChildOf<T>(Expression<Func<T>> newExpression, string? name = null)
             where T : IDataBlock
@@ -120,12 +128,24 @@ namespace CloudMesh.DataBlocks
             => ChildOf(newExpression, name);
 
         protected IDataBlock? GetChild(string name)
-            => children.FirstOrDefault(c => c.Name == name);
+        {
+            return children.FirstOrDefault(c => c.Name == name);
+        }
 
         protected IDataBlock GetOrAddChild<T>(string name, Expression<Func<T>> newExpression)
             where T : IDataBlock
         {
-            return GetChild(name) ?? ChildOf(newExpression, name);
+            var dataBlock = GetChild(name);
+            if (dataBlock is null)
+                return ChildOf(newExpression, name);
+
+            var child = (DataBlock)dataBlock!;
+            if (!child.stopping)
+                return child;
+
+            if (!child.completed)
+                child.completion.Wait();
+            return ChildOf(newExpression, name);
         }
 
         public void Become(Action behavior)
@@ -273,6 +293,7 @@ namespace CloudMesh.DataBlocks
 
         public async ValueTask StopAsync()
         {
+            stopping = true;
             using var _ = await stopLocker.LockAsync();
             if (completed)
                 return;
@@ -280,25 +301,27 @@ namespace CloudMesh.DataBlocks
             // Stop inbox from receiving more messages
             inbox.Writer.Complete();
 
+            // Remove ourselves from parent
+            if (Parent is IDataBlockContainer container)
+                container.RemoveChild(this);
+
             // Wait for all messages in inbox to drain
             await inbox.Reader.Completion;
 
             // Wait for message loop to exit
             await completion;
 
+            var snapshot = Children.ToArray();
+
             // Stop all children
-            var children = Children
+            var stopChildren = snapshot
                 .ToArray() // Force copy of enumeration so it can be modified during stopping 
                 .Where(c => c != null)
                 .Select(c => c.StopAsync())
                 .ToArray();
-            await TaskHelper.WhenAll(children);
+            await TaskHelper.WhenAll(stopChildren);
 
             completed = true;
-
-            // Remove ourselves from parent
-            if (Parent is IDataBlockContainer container)
-                container.RemoveChild(this);
         }
 
         protected void Stop()
@@ -347,9 +370,7 @@ namespace CloudMesh.DataBlocks
         }
 
 
-        protected virtual void Dispose(bool disposeManagedResources)
-        {
-        }
+        protected virtual void Dispose(bool disposeManagedResources) { }
 
         public void Dispose()
         {
