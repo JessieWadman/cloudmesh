@@ -1,6 +1,6 @@
 ﻿using Amazon.DynamoDBv2.DocumentModel;
 using CloudMesh.Persistence.DynamoDB.Helpers;
-using CloudMesh.Serialization;
+using CloudMesh.Serialization.Json;
 using System.Collections;
 using System.Diagnostics;
 using System.Linq.Expressions;

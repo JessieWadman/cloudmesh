@@ -24,5 +24,7 @@ namespace EcsActorsExample.Contracts
         Task<string> Ping();
         Task<Order> PlaceOrderAsync(CartItem[] items);
         string NonAsync();
+
+        Task<string> DemoCancellation(string value, CancellationToken cancellationToken);
     }
 }

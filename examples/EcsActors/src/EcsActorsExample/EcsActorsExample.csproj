@@ -7,21 +7,22 @@
 		<Nullable>enable</Nullable>
 		<UserSecretsId>eeeab982-d282-43c4-802b-de992ab4f96a</UserSecretsId>
 		<DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+		<DockerfileContext>..\..\..\..</DockerfileContext>
 	</PropertyGroup>
 
-	<ItemGroup>
+	<ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-arm64'">
 		<RuntimeHostConfigurationOption Include="System.Globalization.AppLocalIcu" Value="68.2.0.9" />
-		<PackageReference Include="AWSSDK.ServiceDiscovery" Version="3.7.3.160" />
 		<PackageReference Include="Microsoft.ICU.ICU4C.Runtime" Version="68.2.0.9" />
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="AWSSDK.ServiceDiscovery" Version="3.7.3.160" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.15.1" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\..\..\src\CloudMesh.Actors.Hosting\CloudMesh.Actors.Hosting.csproj" />
-	  <ProjectReference Include="..\..\..\..\src\CloudMesh.Actors\CloudMesh.Actors.csproj" />
+	  <ProjectReference Include="..\..\..\..\src\CloudMesh.Hosting.AspNetCore\CloudMesh.Hosting.AspNetCore.csproj" />
+	  <ProjectReference Include="..\..\..\..\src\CloudMesh\CloudMesh.csproj" />
 	  <ProjectReference Include="..\EcsActorsExample.Contracts\EcsActorsExample.Contracts.csproj" />
 	</ItemGroup>
 </Project>

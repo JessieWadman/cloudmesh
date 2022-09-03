@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net6.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+		<Company>Open Source</Company>
+		<Authors>Jessie Wadman</Authors>
+		<Product>CloudMesh</Product>
+		<Description>Minimal microservice framework with actor model for cloud environments</Description>
+		<Copyright>MIT</Copyright>
+		<PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\CloudMesh\CloudMesh.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="AWSSDK.DynamoDBv2" Version="3.7.4" />
+		<PackageReference Include="AWSSDK.Lambda" Version="3.7.14" />
+		<PackageReference Include="AWSSDK.SecretsManager" Version="3.7.2" />
+		<PackageReference Include="AWSSDK.ServiceDiscovery" Version="3.7.3" />
+		<PackageReference Include="AWSSDK.SQS" Version="3.7.2" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
+	</ItemGroup>
+
+</Project>

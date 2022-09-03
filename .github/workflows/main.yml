@@ -10,8 +10,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       
-    
-
       # - name: Setup dotnet
       #   uses: actions/setup-dotnet@v1
       #   with:
@@ -26,23 +24,8 @@ jobs:
     - name: Print version
       run: echo "Building $VERSION"
 
-    - name: Build Core
-      run: dotnet build src/CloudMesh.Core/CloudMesh.Core.csproj -c Release /p:CI=true /p:Version=$VERSION
-
-    - name: Build Actors
-      run: dotnet build src/CloudMesh.Actors/CloudMesh.Actors.csproj -c Release /p:CI=true /p:Version=$VERSION
-
-    - name: Build Actors.Aws
-      run: dotnet build src/CloudMesh.Actors.Aws/CloudMesh.Actors.Aws.csproj -c Release /p:CI=true /p:Version=$VERSION
-
-    - name: Build CloudMesh.Actors.Hosting
-      run: dotnet build src/CloudMesh.Actors.Hosting/CloudMesh.Actors.Hosting.csproj -c Release /p:CI=true /p:Version=$VERSION
-
-    - name: Build CloudMesh.DataBlocks
-      run: dotnet build src/CloudMesh.DataBlocks/CloudMesh.DataBlocks.csproj -c Release /p:CI=true /p:Version=$VERSION
-
-    - name: Build CloudMesh.Persistence.DynamoDB
-      run: dotnet build src/CloudMesh.Persistence.DynamoDB/CloudMesh.Persistence.DynamoDB.csproj -c Release /p:CI=true /p:Version=$VERSION
+    - name: Build
+      run: dotnet build src/CloudMesh.sln -c Release /p:CI=true /p:Version=$VERSION
 
     - name: Publish
       run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -SkipDuplicate -ApiKey ${{secrets.NUGET_KEY}}

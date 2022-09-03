@@ -42,7 +42,6 @@ namespace CloudMesh.DataBlocks
                         break; // Start a new loop with a new CTS
                 }
             }
-
         }
     }
 }

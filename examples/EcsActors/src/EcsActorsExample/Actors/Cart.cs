@@ -24,6 +24,7 @@ namespace EcsActorsExample.Actors
 
         public Task<string> Ping()
         {
+            
             return Task.FromResult("Pong");
         }
 
@@ -37,6 +38,19 @@ namespace EcsActorsExample.Actors
             Console.WriteLine($"Deactivating actor Cart#{Id}");
             return ValueTask.CompletedTask;
 
+        }
+
+        public async Task<string> DemoCancellation(string value, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await Task.Delay(10000, cancellationToken);
+                return "Operation was not cancelled";
+            }
+            catch (TaskCanceledException)
+            {
+                return "Operation was cancelled. Nobody will receive this.";
+            }
         }
     }
 }

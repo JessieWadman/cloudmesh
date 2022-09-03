@@ -9,7 +9,7 @@
 		<Company>Open Source</Company>
 		<Authors>Jessie Wadman</Authors>
 		<Product>CloudMesh</Product>
-		<Description>Minimal actor framework for cloud environments</Description>
+		<Description>Minimal microservice framework with actor model for cloud environments</Description>
 		<Copyright>MIT</Copyright>
 		<PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>

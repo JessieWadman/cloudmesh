@@ -10,7 +10,7 @@ namespace CloudMesh.DataBlocks
 
         private class Flush
         {
-            public static readonly Flush Instance = new Flush();
+            public static readonly Flush Instance = new();
         }
 
         public AggregationDataBlock(TimeSpan flushFrequency, int bufferSize = 1)

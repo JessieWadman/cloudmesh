@@ -1,4 +1,4 @@
-﻿using CloudMesh.Actors.Singletons;
+﻿using CloudMesh.Singletons;
 
 namespace EcsActorsExample.Singletons
 {
