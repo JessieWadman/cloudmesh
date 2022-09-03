@@ -25,7 +25,7 @@ jobs:
       run: echo "Building $VERSION"
 
     - name: Build
-      run: dotnet build src/CloudMesh.sln -c Release /p:CI=true /p:Version=$VERSION
+      run: dotnet build CloudMesh.sln -c Release /p:CI=true /p:Version=$VERSION
 
     - name: Publish
       run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -SkipDuplicate -ApiKey ${{secrets.NUGET_KEY}}
