@@ -2,14 +2,34 @@
 using EcsActorsExample.Actors;
 using EcsActorsExample.Contracts;
 using EcsActorsExample.Services;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using System.Collections.Immutable;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddOpenTelemetryTracing(tracing =>
+{
+    tracing
+        .AddAspNetCoreInstrumentation()
+        .AddHttpClientInstrumentation()
+        .AddAWSInstrumentation()
+        .AddSource(nameof(RandomInvokeService))
+        .SetResourceBuilder(ResourceBuilder.CreateDefault()
+            .AddService(typeof(Cart).Assembly.GetName().Name)
+            .AddTelemetrySdk()
+        )
+        .AddZipkinExporter();
+        /*
+        .AddOtlpExporter(options =>
+        {
+            options.Endpoint = new Uri("http://localhost:4317"); // Signoz Endpoint
+        });*/
+});
+
 // builder.Services.AddHostedService<SingletonTest>();
 builder.Services.AddActor<ICart, Cart>();
 builder.Services.AddService<ICartService, CartService>();
-
 builder.Services.AddHostedService<RandomInvokeService>();
 
 var app = builder.Build();

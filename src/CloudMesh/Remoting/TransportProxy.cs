@@ -1,5 +1,6 @@
 ﻿using CloudMesh.Routing;
 using CloudMesh.Utils;
+using System.Diagnostics;
 using System.Reflection;
 
 namespace CloudMesh.Remoting
@@ -14,12 +15,16 @@ namespace CloudMesh.Remoting
             if (method is null)
                 throw new ArgumentNullException(nameof(method));
 
+            using var activity = Activity.Current?.Source?.StartActivity($"RemoteCall {method.DeclaringType.Name}.{method.Name}");
+
             var routeCall = TryResolveOne();
             if (routeCall.IsCompletedSuccessfully)
             {
+                activity?.AddEvent(new("Route resolved"));
                 var route = routeCall.Result;
                 if (route is null)
                     throw new NoRouteFoundException($"No route instance could be found for {method.DeclaringType!.Name}.{method.Name}");
+                activity?.SetTag("route", route.ToString());
                 return Call(route);
             }
 
@@ -32,8 +37,10 @@ namespace CloudMesh.Remoting
             async ValueTask<object?> AwaitRouteAndThenCall()
             {
                 var route = await routeCall;
+                activity?.AddEvent(new("Route resolved"));
                 if (route is null)
                     throw new NoRouteFoundException($"No route instance could be found for {method.DeclaringType!.Name}.{method.Name}");
+                activity?.SetTag("route", route.ToString());
                 return await InvokeAsync(route, method, arguments ?? Array.Empty<object?>());
             }
 

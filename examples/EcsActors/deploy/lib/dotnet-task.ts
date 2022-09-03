@@ -120,11 +120,11 @@ export class DotNetTask extends Construct {
             ]
         });
 
-        const tag = Date.now().toString(16);
+        const tag = `${Date.now().toString(16)}-${props.code.architecture == 'arm64' ? 'arm64' : 'amd64'}`;
 
         const deployment = new ECRDeployment(this, 'Deployment', {
             src: new DockerImageName(dockerImage.imageUri),
-            dest: new DockerImageName(`${repo.repositoryUri}:${tag}-${props.code.architecture == 'arm64' ? 'arm64' : 'amd64'}`)
+            dest: new DockerImageName(`${repo.repositoryUri}:${tag}`)
         });
 
         const task = new TaskDefinition(this, 'Task', {

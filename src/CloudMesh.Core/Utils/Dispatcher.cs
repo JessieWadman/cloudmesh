@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace CloudMesh.Utils
 {
@@ -31,6 +32,13 @@ namespace CloudMesh.Utils
 
         public override object? Invoke(string methodName, object[] arguments, out Type returnType)
         {
+            /*var retValue = typeof(T).InvokeMember(methodName, BindingFlags.Public | BindingFlags.Instance, null, actor, arguments);
+            returnType = retValue switch
+            {
+                null => typeof(void),
+                _ => retValue.GetType()
+            };*/
+
             var method = MethodCache<T>.GetMethod(methodName);
             returnType = method.ReturnType;
             var retValue = method.Invoke(actor, arguments);

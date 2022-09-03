@@ -34,13 +34,10 @@ namespace CloudMesh.Remoting.Http
         protected virtual async Task<object?> InvokeHttpAsync(ResourceIdentifier route, string relativeUrl,
             MethodInfo method, object?[]? args)
         {
-            var source = Activity.Current?.Source;
-            var activity = source?.StartActivity($"{route}/{relativeUrl}", ActivityKind.Client);
-            if (activity is not null)
+            if (Activity.Current is not null)
             {
-                activity.DisplayName = $"{method.DeclaringType!.Name}.{method.Name}";
-                activity.SetTag("Resource", route.ToString());
-                activity.SetTag("Method", method.Name);
+                Activity.Current.SetTag("Resource", route.ToString());
+                Activity.Current.SetTag("Method", method.Name);
             }
             try
             {
@@ -52,12 +49,12 @@ namespace CloudMesh.Remoting.Http
 
                 var payload = SerializationHelper.CreateObjFor(method, args, out var cancellationToken);
 #if (DEBUG)
-                activity?.AddBaggage("Args", JsonSerializer.Serialize(payload, JsonOptions));
+                Activity.Current?.AddBaggage("Args", JsonSerializer.Serialize(payload, JsonOptions));
 #endif
 
                 cancellationToken ??= default;
 
-                activity?.AddEvent(new("PutAsJsonAsync"));
+                Activity.Current?.AddEvent(new("PutAsJsonAsync"));
 
                 var response = await client.PutAsJsonAsync(relativeUrl, payload, JsonOptions, cancellationToken.Value);
 
@@ -70,8 +67,8 @@ namespace CloudMesh.Remoting.Http
                         exceptionContext.Throw();
                 }
 
-                activity?.AddEvent(new("ParseResponse"));
-                activity?.AddTag("StatusCode", (int)response.StatusCode);
+                Activity.Current?.AddEvent(new("ParseResponse"));
+                Activity.Current?.AddTag("StatusCode", (int)response.StatusCode);
 
                 response.EnsureSuccessStatusCode();
                 if (response.StatusCode == HttpStatusCode.NoContent || returnsVoid)
@@ -90,7 +87,7 @@ namespace CloudMesh.Remoting.Http
 
                 if (returnValue is null)
                 {
-                    activity?.Complete();
+                    Activity.Current?.Complete();
                     return default;
                 }
 
@@ -99,17 +96,17 @@ namespace CloudMesh.Remoting.Http
                     returnValue.Exception.Throw();
                 }
 
-                activity?.Complete();
+                Activity.Current?.Complete();
                 return returnValue.GetValue();
             }
             catch (Exception e)
             {
-                activity?.Fail(e);
+                Activity.Current?.Fail(e);
                 throw;
             }
             finally
             {
-                activity?.Dispose();
+                Activity.Current?.Dispose();
             }
         }
     }

@@ -28,7 +28,7 @@ export class CloudMesh extends Construct {
         super(scope, id);
 
         this.namespace = new PrivateDnsNamespace(this, 'CloudMapNamespace', {
-            name: props.cloudMapNamespaceName,
+            name: props.cloudMapNamespaceName,            
             description: props.cloudMapNamespaceDescription,            
             vpc: props.vpc
         });

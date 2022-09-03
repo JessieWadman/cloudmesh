@@ -1,6 +1,6 @@
 import * as cdk from 'aws-cdk-lib';
 import { RemovalPolicy } from 'aws-cdk-lib';
-import { Vpc } from 'aws-cdk-lib/aws-ec2';
+import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster } from 'aws-cdk-lib/aws-ecs';
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
@@ -76,9 +76,9 @@ export class Example1Stack extends cdk.Stack {
     });
 
     const ecsCluster = new Cluster(this, 'Cluster', {
-      defaultCloudMapNamespace: {
+      defaultCloudMapNamespace: {        
         name: cloudMesh.namespace.namespaceName,
-        type: NamespaceType.HTTP,
+        type: NamespaceType.DNS_PRIVATE,
         vpc: vpc
       },
       enableFargateCapacityProviders: true,

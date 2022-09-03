@@ -2,12 +2,14 @@
 using CloudMesh.Routing;
 using CloudMesh.Services;
 using EcsActorsExample.Contracts;
+using System.Diagnostics;
 
 namespace EcsActorsExample.Services
 {
     public class RandomInvokeService : BackgroundService
     {
         private readonly ILogger<RandomInvokeService> logger;
+        private static readonly ActivitySource Activity = new(nameof(RandomInvokeService));
 
         public RandomInvokeService(ILogger<RandomInvokeService> logger)
         {
@@ -23,6 +25,7 @@ namespace EcsActorsExample.Services
                 await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
                 if (!stoppingToken.IsCancellationRequested)
                 {
+                    using var activity = Activity.StartActivity(nameof(ExecuteAsync));
                     try
                     {
                         var actorNo = (counter++ % 10).ToString();
