@@ -11,5 +11,5 @@
   "function-runtime": "dotnet6",
   "function-memory-size": 256,
   "function-timeout": 30,
-  "function-handler": "LambdaCallerExample::LambdaCallerExample.Function::FunctionHandler"
+  "function-handler": "bootstrap::OrderService.DebugHost::HandleAsync"
 }

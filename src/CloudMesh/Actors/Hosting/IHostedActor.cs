@@ -1,5 +1,7 @@
 ﻿using CloudMesh.Routing;
 using CloudMesh.Utils;
+using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
 using System.Threading.Channels;
 
 namespace CloudMesh.Actors.Hosting
@@ -26,6 +28,8 @@ namespace CloudMesh.Actors.Hosting
 
     public static class HostedActorExtensions
     {
+        private static readonly ConcurrentDictionary<string, Counter<int>> actorInvocations = new();
+
         public static async Task<object?> InvokeAsync(
             this IHostedActor actor,
             string methodName,
@@ -41,6 +45,9 @@ namespace CloudMesh.Actors.Hosting
                 BackpressureMonitor.BackpressureDetected(actor.ActorName, actor.Id);
                 await inbox.Writer.WriteAsync(envelope, cancellationToken);
             }
+
+            actorInvocations.GetOrAdd(actor.ActorName, n => Metrics.Meter.CreateCounter<int>($"actorInvocations.{n}"))
+                .Add(1);
 
             if (!waitForCompletion)
                 return NoReturnType.Instance;

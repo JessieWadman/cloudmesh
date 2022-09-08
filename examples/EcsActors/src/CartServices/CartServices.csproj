@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.Web">
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
 
 	<PropertyGroup>
 		<OutputType>Exe</OutputType>
@@ -16,10 +16,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="AWSSDK.ServiceDiscovery" Version="3.7.3.160" />
 		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.0" />
 		<PackageReference Include="OpenTelemetry.Contrib.Instrumentation.AWS" Version="1.0.1" />
-		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.4.0-alpha.2" />
+		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.4.0-alpha.2">
+		  <TreatAsUsed>true</TreatAsUsed>
+		</PackageReference>
 		<PackageReference Include="OpenTelemetry.Exporter.Zipkin" Version="1.4.0-alpha.2" />
 		<PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.0.0-rc9.6" />
 		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.0.0-rc9.6" />
@@ -27,8 +28,9 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\..\..\src\CloudMesh.Aws\CloudMesh.Aws.csproj" />
 	  <ProjectReference Include="..\..\..\..\src\CloudMesh.Hosting.AspNetCore\CloudMesh.Hosting.AspNetCore.csproj" />
 	  <ProjectReference Include="..\..\..\..\src\CloudMesh\CloudMesh.csproj" />
-	  <ProjectReference Include="..\EcsActorsExample.Contracts\EcsActorsExample.Contracts.csproj" />
+	  <ProjectReference Include="..\Example1.Contracts\Example1.Contracts.csproj" />
 	</ItemGroup>
 </Project>

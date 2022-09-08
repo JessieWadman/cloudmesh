@@ -2,14 +2,21 @@
 {
     public static class ActorTypes
     {
-        private static readonly Dictionary<string, Type> actorNamesToActorInterfaceTypes = new();
+        private static readonly Dictionary<string, (Type, Type)> actorNamesToActorInterfaceTypes = new();
 
-        public static void Register<T>(string actorName) where T : Actor
+        public static void Register<TActor, TImplementation>()
+            where TActor : class, IActor
+            where TImplementation : Actor, TActor
         {
-            actorNamesToActorInterfaceTypes[actorName] = typeof(T);
+            actorNamesToActorInterfaceTypes[typeof(TActor).Name] = (typeof(TActor), typeof(TImplementation));
         }
 
-        public static bool TryGetActorTypeFor(string actorName, out Type? actorType)
-            => actorNamesToActorInterfaceTypes.TryGetValue(actorName, out actorType);
+        public static bool TryGetActorTypeFor(string actorName, out Type? actorType, out Type? implementationType)
+        {
+            var result = actorNamesToActorInterfaceTypes.TryGetValue(actorName, out var types);
+            actorType = types.Item1;
+            implementationType = types.Item2;
+            return result;
+        }
     }
 }

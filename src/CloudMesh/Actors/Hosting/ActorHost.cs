@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
 
 namespace CloudMesh.Actors.Hosting
 {
@@ -16,6 +17,8 @@ namespace CloudMesh.Actors.Hosting
         private readonly CancellationTokenSource evictIdleActorStoppingTokenSource = new();
 
         public static IActorHost? Instance = null;
+
+        private static readonly Counter<int> actorsEvicted = Metrics.Meter.CreateCounter<int>("actorsEvicted");        
 
         public ActorHost(IServiceProvider services, IConfiguration configuration, ILoggerFactory loggerFactory)
         {
@@ -45,6 +48,7 @@ namespace CloudMesh.Actors.Hosting
                         try
                         {
                             await actor.StopAsync();
+                            actorsEvicted.Add(1);
                         }
                         catch { }
                     }
@@ -81,16 +85,19 @@ namespace CloudMesh.Actors.Hosting
             return actorsByActorName.GetOrAdd(actorType, _ => new ConcurrentDictionary<string, IHostedActor>());
         }
 
-        public bool TryGetHostedActor(string actorName, string id, out IHostedActor? actor)
+        public bool TryGetHostedActor(string actorName, string id, out IHostedActor? actor, out Type? actorType)
         {
             ThrowIfDisposed();
 
             actor = null;
-            if (!ActorTypes.TryGetActorTypeFor(actorName, out var actorType) || actorType is null)
+            actorType = null;
+
+            if (!ActorTypes.TryGetActorTypeFor(actorName, out actorType, out var implementationType) 
+                || actorType is null || implementationType is null)
                 return false;
 
             var actorTypesToInstances = GetActorMap(actorName);
-            actor = actorTypesToInstances.GetOrAdd(id, _ => CreateActor(actorName, actorType, id));
+            actor = actorTypesToInstances.GetOrAdd(id, _ => CreateActor(actorName, implementationType, id));
             return actor is not null;
         }
 

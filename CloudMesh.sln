@@ -7,19 +7,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A96A479E-968
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{9687377C-3528-4E84-A6A4-96B21F36CEC2}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "EcsActors", "EcsActors", "{7450678E-B56E-4507-A372-9F21AEE458C6}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EcsActorsExample", "examples\EcsActors\src\EcsActorsExample\EcsActorsExample.csproj", "{8D33DB79-3E9A-4516-8870-837A8264800D}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LambdaCallerExample", "examples\EcsActors\src\LambdaCallerExample\LambdaCallerExample.csproj", "{4CAAEA54-05C7-472F-AC1F-8206EA7AD9C0}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EcsActorsExample.Contracts", "examples\EcsActors\src\EcsActorsExample.Contracts\EcsActorsExample.Contracts.csproj", "{26A2975B-0176-4EBB-96C5-962C4368E5F9}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Example 1 - ECS and Lambda services and actors", "Example 1 - ECS and Lambda services and actors", "{7450678E-B56E-4507-A372-9F21AEE458C6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{4389C075-457C-493B-AE12-FF626CFAB1BC}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "workflows", "workflows", "{E836A1B1-92CA-465B-AC15-348A70875A33}"
 	ProjectSection(SolutionItems) = preProject
 		.github\workflows\main.yml = .github\workflows\main.yml
+		.github\workflows\pull-requests.yml = .github\workflows\pull-requests.yml
 	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.Core", "src\CloudMesh.Core\CloudMesh.Core.csproj", "{B1522C31-C7C7-4619-9763-2CDC1D3921E6}"
@@ -37,9 +32,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		Directory.Build.props = Directory.Build.props
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.DataBlocks.Tests", "test\CloudMesh.DataBlocks.Tests\CloudMesh.DataBlocks.Tests.csproj", "{27C7182C-0548-457E-87B3-C069ED3B70A3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.DataBlocks.Tests", "test\CloudMesh.DataBlocks.Tests\CloudMesh.DataBlocks.Tests.csproj", "{27C7182C-0548-457E-87B3-C069ED3B70A3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh", "src\CloudMesh\CloudMesh.csproj", "{5A29A3E4-8723-4F68-A8DD-FF0424218F07}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh", "src\CloudMesh\CloudMesh.csproj", "{5A29A3E4-8723-4F68-A8DD-FF0424218F07}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.Aws", "src\CloudMesh.Aws\CloudMesh.Aws.csproj", "{6F8C18A3-9884-49FC-AACB-CE7CCF1D060E}"
 EndProject
@@ -47,24 +42,20 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.Hosting.AspNetCor
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.Hosting.Lambda", "src\CloudMesh.Hosting.Lambda\CloudMesh.Hosting.Lambda.csproj", "{3A4165BB-3C26-453A-B252-183FFACEA9F3}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.Serialization.Tests", "test\CloudMesh.Serialization.Tests\CloudMesh.Serialization.Tests.csproj", "{165BF026-0B2F-48FA-935F-680497603A19}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "OrderService", "examples\EcsActors\src\OrderService\OrderService.csproj", "{95F50201-1AB4-4DA1-BD77-E240162B26D0}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Example1.Contracts", "examples\EcsActors\src\Example1.Contracts\Example1.Contracts.csproj", "{113BDFE8-2111-4C17-8AA3-A5937FE15D5A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CartServices", "examples\EcsActors\src\CartServices\CartServices.csproj", "{871002EF-A8C8-4435-8A6F-FE53FE1FD8A2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8D33DB79-3E9A-4516-8870-837A8264800D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8D33DB79-3E9A-4516-8870-837A8264800D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8D33DB79-3E9A-4516-8870-837A8264800D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8D33DB79-3E9A-4516-8870-837A8264800D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4CAAEA54-05C7-472F-AC1F-8206EA7AD9C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4CAAEA54-05C7-472F-AC1F-8206EA7AD9C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4CAAEA54-05C7-472F-AC1F-8206EA7AD9C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4CAAEA54-05C7-472F-AC1F-8206EA7AD9C0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{26A2975B-0176-4EBB-96C5-962C4368E5F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{26A2975B-0176-4EBB-96C5-962C4368E5F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{26A2975B-0176-4EBB-96C5-962C4368E5F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{26A2975B-0176-4EBB-96C5-962C4368E5F9}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B1522C31-C7C7-4619-9763-2CDC1D3921E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B1522C31-C7C7-4619-9763-2CDC1D3921E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B1522C31-C7C7-4619-9763-2CDC1D3921E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -101,15 +92,28 @@ Global
 		{3A4165BB-3C26-453A-B252-183FFACEA9F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3A4165BB-3C26-453A-B252-183FFACEA9F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3A4165BB-3C26-453A-B252-183FFACEA9F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{165BF026-0B2F-48FA-935F-680497603A19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{165BF026-0B2F-48FA-935F-680497603A19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{165BF026-0B2F-48FA-935F-680497603A19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{165BF026-0B2F-48FA-935F-680497603A19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95F50201-1AB4-4DA1-BD77-E240162B26D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95F50201-1AB4-4DA1-BD77-E240162B26D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95F50201-1AB4-4DA1-BD77-E240162B26D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95F50201-1AB4-4DA1-BD77-E240162B26D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{113BDFE8-2111-4C17-8AA3-A5937FE15D5A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{113BDFE8-2111-4C17-8AA3-A5937FE15D5A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{113BDFE8-2111-4C17-8AA3-A5937FE15D5A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{113BDFE8-2111-4C17-8AA3-A5937FE15D5A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{871002EF-A8C8-4435-8A6F-FE53FE1FD8A2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{871002EF-A8C8-4435-8A6F-FE53FE1FD8A2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{871002EF-A8C8-4435-8A6F-FE53FE1FD8A2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{871002EF-A8C8-4435-8A6F-FE53FE1FD8A2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{7450678E-B56E-4507-A372-9F21AEE458C6} = {9687377C-3528-4E84-A6A4-96B21F36CEC2}
-		{8D33DB79-3E9A-4516-8870-837A8264800D} = {7450678E-B56E-4507-A372-9F21AEE458C6}
-		{4CAAEA54-05C7-472F-AC1F-8206EA7AD9C0} = {7450678E-B56E-4507-A372-9F21AEE458C6}
-		{26A2975B-0176-4EBB-96C5-962C4368E5F9} = {7450678E-B56E-4507-A372-9F21AEE458C6}
 		{E836A1B1-92CA-465B-AC15-348A70875A33} = {4389C075-457C-493B-AE12-FF626CFAB1BC}
 		{B1522C31-C7C7-4619-9763-2CDC1D3921E6} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
 		{9787B091-859C-439D-B99F-F5C440E2A788} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
@@ -120,6 +124,10 @@ Global
 		{6F8C18A3-9884-49FC-AACB-CE7CCF1D060E} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
 		{7CDE6DF9-72A3-4C3B-843E-1925B10C2418} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
 		{3A4165BB-3C26-453A-B252-183FFACEA9F3} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
+		{165BF026-0B2F-48FA-935F-680497603A19} = {C60F40DA-B95F-4571-9983-8A342046D60A}
+		{95F50201-1AB4-4DA1-BD77-E240162B26D0} = {7450678E-B56E-4507-A372-9F21AEE458C6}
+		{113BDFE8-2111-4C17-8AA3-A5937FE15D5A} = {7450678E-B56E-4507-A372-9F21AEE458C6}
+		{871002EF-A8C8-4435-8A6F-FE53FE1FD8A2} = {7450678E-B56E-4507-A372-9F21AEE458C6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1B0642CC-1BC5-42D7-9CE3-87B1D1080B36}

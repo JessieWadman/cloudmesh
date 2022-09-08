@@ -64,7 +64,7 @@ namespace CloudMesh.Utils
             if (!taskType.IsAssignableFrom(method.ReturnType))
                 return false;
 
-            if (method.ReturnType.GenericTypeArguments.Length == 0)
+            if (!method.ReturnType.IsGenericType)
             {
                 returnType = typeof(void);
                 return true;

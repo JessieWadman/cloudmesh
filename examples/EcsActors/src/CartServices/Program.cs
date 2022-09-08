@@ -1,4 +1,5 @@
-﻿using CloudMesh.Routing;
+﻿using CloudMesh.Aws.ServiceDiscovery;
+using CloudMesh.Routing;
 using EcsActorsExample.Actors;
 using EcsActorsExample.Contracts;
 using EcsActorsExample.Services;
@@ -6,8 +7,20 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System.Collections.Immutable;
 
+AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
+void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+{
+    Console.WriteLine($"UNHANDLED APPLICATION EXCEPTION [{(e.IsTerminating ? "Terminating" : "Recovering")}]: {e.ExceptionObject}");
+}
+
+await using var serviceDiscovery = new CloudMapServiceDiscovery(
+    Environment.GetEnvironmentVariable("cloudMapNamespace") ?? "example1.cloudmesh"
+);
+
 var builder = WebApplication.CreateBuilder(args);
 
+#if (OPEN_TELEMETRY)
 builder.Services.AddOpenTelemetryTracing(tracing =>
 {
     tracing
@@ -19,6 +32,7 @@ builder.Services.AddOpenTelemetryTracing(tracing =>
             .AddService(typeof(Cart).Assembly.GetName().Name)
             .AddTelemetrySdk()
         )
+        .SetErrorStatusOnException(true)
         .AddZipkinExporter();
         /*
         .AddOtlpExporter(options =>
@@ -26,15 +40,19 @@ builder.Services.AddOpenTelemetryTracing(tracing =>
             options.Endpoint = new Uri("http://localhost:4317"); // Signoz Endpoint
         });*/
 });
+#endif
 
+builder.Services.AddAwsCloudMesh();
 // builder.Services.AddHostedService<SingletonTest>();
+
 builder.Services.AddActor<ICart, Cart>();
 builder.Services.AddService<ICartService, CartService>();
+
 builder.Services.AddHostedService<RandomInvokeService>();
 
 var app = builder.Build();
 
-#if (DEBUG)
+#if (MOCK_ROUTER)
 
 var mockResolver = new MockRouteResolver();
 Router.RouteResolver = mockResolver;
@@ -49,12 +67,13 @@ app.Services.GetRequiredService<IHostApplicationLifetime>()
             .First();
         mockResolver.Set<ICart>("Actors", new[] { new ResourceInstance("1", ResourceIdentifier.Parse($"http://{localIp}"), ImmutableDictionary<string, string>.Empty) });
         mockResolver.Set<ICartService>("Services", new[] { new ResourceInstance("1", ResourceIdentifier.Parse($"http://{localIp}"), ImmutableDictionary<string, string>.Empty) });
-        /*
+        mockResolver.Set<IFulfillmentService>("Services", new[] { new ResourceInstance("IFulfillmentService", ResourceIdentifier.Parse("lambda://Example1Stack-OrderServiceHandler31BDE8FC-vCVlNTwXKlME"), ImmutableDictionary<string, string>.Empty) });
         
+        /*        
         mockResolver.Set("Storage", "StateStore", new[] { new ResourceInstance("1", new("sql", "localhost:1433"), ImmutableDictionary<string, string>.Empty.Add("username", "sa")) });
         mockResolver.Set<IOrderService>("Services", new[] { new ResourceInstance("1", ResourceIdentifier.Parse("lambda://invocation-test"), ImmutableDictionary<string, string>.Empty) });*/
     });
-#endif 
+#endif
 
 if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
@@ -65,8 +84,11 @@ app.UseRouting();
 app.MapActors();
 app.MapServices();
 
-#if (RELEASE)
-app.Urls.Add("http://+:5000");
+#if (!RELEASE)
+app.Urls.Add($"http://{LocalIpAddressResolver.Instance.Resolve()}:3500");
 #endif
+
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+logger.LogInformation("Running on {ip}", LocalIpAddressResolver.Instance.Resolve());
 
 await app.RunAsync();

@@ -1,12 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
 import { RemovalPolicy } from 'aws-cdk-lib';
-import { SubnetType, Vpc } from 'aws-cdk-lib/aws-ec2';
+import { Vpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster } from 'aws-cdk-lib/aws-ecs';
 import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
-import { NamespaceType } from 'aws-cdk-lib/aws-servicediscovery';
 import { Queue } from 'aws-cdk-lib/aws-sqs';
-import { DH_NOT_SUITABLE_GENERATOR } from 'constants';
 import { Construct } from 'constructs';
 import { CloudMesh } from './cloudmesh';
 import { dotNetCode, DotNetLambda } from './dotnet-lambda';
@@ -29,9 +27,12 @@ export class Example1Stack extends cdk.Stack {
       vpc
     });
 
+    // ------ Sample queue
     const demoQueue = new Queue(this, 'DemoQueue', { });
     cloudMesh.addQueue('demo', demoQueue);
 
+
+    // ------ Sample file area storage
     const storageBucket = new Bucket(this, 'SomeBlobs', {
       autoDeleteObjects: true,
       removalPolicy: RemovalPolicy.DESTROY,
@@ -40,12 +41,16 @@ export class Example1Stack extends cdk.Stack {
     });
     cloudMesh.addBucket('SomeBlobs', storageBucket);
 
+
+    // ------ Order service
     const orderService = new DotNetLambda(this, 'OrderService', {
       description: 'Order service',
-      code: dotNetCode.buildProject('../src/LambdaCallerExample', 'bootstrap', 'x64')
+      code: dotNetCode.buildProject('../src/OrderService', 'bootstrap', 'x64') // arm64 lambdas are not supported in all regions.
     });
     cloudMesh.addLambdaService(orderService.handler, ['IFulfillmentService', 'IOrderPlacementService']);    
 
+
+    // ------ ECS cluster
     const spawnTasksRole = new Role(this, 'ClusterSpawnTasksRole', {
         assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
         inlinePolicies: {
@@ -76,18 +81,15 @@ export class Example1Stack extends cdk.Stack {
     });
 
     const ecsCluster = new Cluster(this, 'Cluster', {
-      defaultCloudMapNamespace: {        
-        name: cloudMesh.namespace.namespaceName,
-        type: NamespaceType.DNS_PRIVATE,
-        vpc: vpc
-      },
       enableFargateCapacityProviders: true,
       vpc
     });
 
-    const orderActors = new DotNetTask(this, 'CartService', {
+
+    // ------ Cart service and actors in ECS cluster
+    const cartServices = new DotNetTask(this, 'CartService', {
       cloudMesh,
-      code: dotNetTaskCode.buildProject('../src/EcsActorsExample', undefined, 'arm64'),
+      code: dotNetTaskCode.buildProject('../src/CartServices', undefined, 'x64'),
       description: 'CartService sample',
       ecsCluster,
       ecsClusterExecutionRole: spawnTasksRole,
@@ -98,5 +100,7 @@ export class Example1Stack extends cdk.Stack {
       maxHealthyPercent: 300,
       minHealthyPercent: 50
     });
+
+    orderService.handler.grantInvoke(cartServices.role);
   }
 }

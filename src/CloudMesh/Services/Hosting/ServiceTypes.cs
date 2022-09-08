@@ -1,6 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace CloudMesh.Hosting.AspNetCore
+namespace CloudMesh.Services.Hosting
 {
     public static class ServiceTypes
     {

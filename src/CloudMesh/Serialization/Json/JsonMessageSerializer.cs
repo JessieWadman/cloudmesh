@@ -15,10 +15,10 @@ namespace CloudMesh.Serialization.Json
 #endif
         };
 
-        public Task SerializeAsync(Stream utf8Stream, MethodInfo method, object?[] arguments)
+        public Task SerializeAsync(Stream utf8Stream, MethodInfo method, object?[] arguments, out CancellationToken? cancellationToken)
         {
-            var obj = SerializationHelper.CreateObjFor(method, arguments, out var ct);
-            return JsonSerializer.SerializeAsync(utf8Stream, obj, options: opts, cancellationToken: ct ?? default);
+            var obj = SerializationHelper.CreateObjFor(method, arguments, out cancellationToken);
+            return JsonSerializer.SerializeAsync(utf8Stream, obj, options: opts, cancellationToken: cancellationToken ?? default);
         }
 
         public ReadOnlySpan<byte> Serialize(MethodInfo method, object?[] arguments)

@@ -21,10 +21,6 @@ namespace EcsActorsExample.Contracts
 
     public interface ICart : IActor
     {
-        Task<string> Ping();
-        Task<Order> PlaceOrderAsync(CartItem[] items);
-        string NonAsync();
-
-        Task<string> DemoCancellation(string value, CancellationToken cancellationToken);
+        Task<string> AddProductToCart(string productId, CancellationToken cancellationToken);
     }
 }

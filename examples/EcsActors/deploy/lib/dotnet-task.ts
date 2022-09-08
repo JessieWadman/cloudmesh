@@ -2,8 +2,8 @@ import { Duration, RemovalPolicy } from "aws-cdk-lib";
 import { ISecurityGroup, Peer, Port, SecurityGroup, SubnetType } from "aws-cdk-lib/aws-ec2";
 import { Repository } from "aws-cdk-lib/aws-ecr";
 import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
-import { AwsLogDriver, Compatibility, ContainerImage, CpuArchitecture, DeploymentControllerType, FargateService, ICluster, OperatingSystemFamily, TaskDefinition } from "aws-cdk-lib/aws-ecs";
-import { IRole, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { AwsLogDriver, Compatibility, ContainerImage, CpuArchitecture, DeploymentControllerType, FargateService, ICluster, OperatingSystemFamily, Protocol, TaskDefinition } from "aws-cdk-lib/aws-ecs";
+import { Effect, IRole, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Code, Function } from "aws-cdk-lib/aws-lambda";
 import { DockerImageName, ECRDeployment } from "cdk-ecr-deployment";
 import { Construct } from "constructs";
@@ -12,7 +12,7 @@ import { dotNetArch } from "./dotnet-lambda";
 import * as fs from 'fs';
 import { execSync } from "child_process";
 import { DnsRecordType } from "aws-cdk-lib/aws-servicediscovery";
-import { DH_NOT_SUITABLE_GENERATOR } from "constants";
+import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 
 export class dotNetTaskCode {
     public assetPath: string;
@@ -92,9 +92,35 @@ export class DotNetTask extends Construct {
     constructor(scope: Construct, id: string, props: DotNetTaskProps) {
         super(scope, id);
 
-        this.role = new Role(this, 'Role', {
-            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com')
+        const logGroup = new LogGroup(this, 'Logs', {
+            removalPolicy: RemovalPolicy.DESTROY,
+            retention: RetentionDays.TWO_WEEKS
         });
+
+        this.role = new Role(this, 'Role', {
+            assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+            description: `Task role for ${id}`,
+            managedPolicies: [],
+            inlinePolicies: {
+                xray: new PolicyDocument({
+                    statements: [
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                              "xray:PutTraceSegments",
+                              "xray:PutTelemetryRecords",
+                              "xray:GetSamplingRules",
+                              "xray:GetSamplingTargets",
+                              "xray:GetSamplingStatisticSummaries"
+                            ],
+                            resources: ['*']
+                        })
+                    ]
+                })
+            }
+        });
+
+        logGroup.grantWrite(this.role);
 
         const repo = new Repository(this, 'Repository', {
             repositoryName: props.repositoryName,
@@ -149,19 +175,23 @@ export class DotNetTask extends Construct {
         const container = task.addContainer('Container', {
             image: ContainerImage.fromEcrRepository(repo, tag),
             logging: new AwsLogDriver({
-                streamPrefix: id,
+                logGroup,
+                streamPrefix: id
             }),
             environment,
             dockerLabels: {
                 app: id
             },
-            portMappings: [
-                { containerPort: 3500 }
-            ],
             essential: true,
             stopTimeout: Duration.minutes(2),
             cpu: props.cpu || 256,
             memoryReservationMiB: props.memoryMiB || 512,            
+        });
+
+        container.addPortMappings({
+            containerPort: 3500,
+            hostPort: 3500,
+            protocol: Protocol.TCP
         });
 
         const subnets = props.ecsCluster.vpc.selectSubnets({
@@ -179,7 +209,7 @@ export class DotNetTask extends Construct {
             securityGroups = [sg];
         }
 
-        const service = new FargateService(this, id, {
+        const service = new FargateService(this, 'FargateService', {
             cluster: props.ecsCluster,
             desiredCount: props.desiredCount,
             taskDefinition: task,
@@ -202,6 +232,15 @@ export class DotNetTask extends Construct {
                 rollback: true
             }
         });
+        /*
+        service.associateCloudMapService({
+                service: props.cloudMesh.namespace.createService('Service', {
+                    description: props.description,
+                    discoveryType: DiscoveryType.DNS_AND_API,
+                    dnsRecordType: DnsRecordType.SRV,
+                    name: id, // 
+            })
+        });*/
 
         if (props.serviceInterfaceTypes && props.serviceInterfaceTypes.length > 0) {
             props.cloudMesh.addEcsServices(id, props.serviceInterfaceTypes);

@@ -52,7 +52,8 @@ namespace CloudMesh.Remoting.Http
                 Activity.Current?.AddBaggage("Args", JsonSerializer.Serialize(payload, JsonOptions));
 #endif
 
-                cancellationToken ??= default;
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+                cancellationToken ??= timeout.Token;
 
                 Activity.Current?.AddEvent(new("PutAsJsonAsync"));
 

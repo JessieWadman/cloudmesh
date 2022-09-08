@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.DependencyInjection
 {
     public static class ServiceCollectionExtensions
     {
-        public static IServiceCollection AddAws(this IServiceCollection services)
+        public static IServiceCollection AddAwsCloudMesh(this IServiceCollection services)
         {
             ServiceTransports.Instance.Register("lambda", () => LambdaInvoker.Instance);
             SecretsProviders.Instance.Register("secret", () => SecretsManagerProvider.Instance);

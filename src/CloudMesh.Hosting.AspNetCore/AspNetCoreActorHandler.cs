@@ -1,6 +1,5 @@
 ﻿using CloudMesh.Actors.Hosting;
 using CloudMesh.Hosting.AspNetCore.Helpers;
-using CloudMesh.Remoting;
 using CloudMesh.Routing;
 using CloudMesh.Serialization;
 using CloudMesh.Utils;
@@ -18,13 +17,14 @@ namespace CloudMesh.Hosting.AspNetCore
             var actorHost = context.RequestServices.GetRequiredService<IActorHost>();
             var logger = context.RequestServices.GetRequiredService<ILogger<AspNetCoreActorHandler>>();
 
-            if (!actorHost.TryGetHostedActor(actorName, id, out var hostedActor) || hostedActor is null)
+            if (!actorHost.TryGetHostedActor(actorName, id, out var hostedActor, out var actorType) 
+                || hostedActor is null
+                || actorType is null)
             {
                 logger.LogWarning($"NotFound: No registration for actor with name [{actorName}]");
                 return Results.NotFound();
             }
 
-            var actorType = hostedActor.GetType();
             var method = MethodCache.GetMethod(actorType, methodName);
             if (method is null)
             {
@@ -46,7 +46,7 @@ namespace CloudMesh.Hosting.AspNetCore
 
             try
             {
-                var retValue = await hostedActor.InvokeAsync(methodName, args, sender, !returnsVoid, default);
+                var retValue = await hostedActor.InvokeAsync(methodName, args!, sender, !returnsVoid, default);
                 if (retValue == null || retValue is NoReturnType)
                 {
                     return Results.NoContent();

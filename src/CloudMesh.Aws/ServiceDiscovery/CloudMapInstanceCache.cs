@@ -54,15 +54,15 @@ namespace CloudMesh.Aws.ServiceDiscovery
                         port = "3500";
                     instances.Add(new ResourceInstance(instance.InstanceId, new ResourceIdentifier("http", $"{ip}:{port}"), instance.Attributes.ToImmutableDictionary()));
                 }
-                else if (instance.Attributes.TryGetValue("Arn", out var arnString))
+                else if (instance.Attributes.TryGetValue("arn", out var arnString))
                 {
                     var arn = Arn.Parse(arnString);
                     var resource = arn.Resource.Split(':').Last();
                     instances.Add(new ResourceInstance(instance.InstanceId, new ResourceIdentifier(arn.Service, resource), instance.Attributes.ToImmutableDictionary()));
                 }
-                else if (instance.Attributes.TryGetValue("ServiceName", out var serviceName))
+                else if (instance.Attributes.TryGetValue("serviceName", out var serviceName))
                 {
-                    instances.Add(new ResourceInstance(instance.InstanceId, new ResourceIdentifier("service", serviceName), instance.Attributes.ToImmutableDictionary()));
+                    instances.Add(new ResourceInstance(instance.InstanceId, ResourceIdentifier.Parse(serviceName), instance.Attributes.ToImmutableDictionary()));
                 }
             }
 

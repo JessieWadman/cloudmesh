@@ -20,7 +20,6 @@ namespace CloudMesh.Serialization
 
     public class SerializationHelper
     {
-        private static readonly ConcurrentDictionary<MethodInfo, int> methodsToLayoutIds = new();
         private static readonly ConcurrentDictionary<int, SerializerType> layoutToTypes = new();
 
         public static SerializerType GetSerializerTypeForLayout(MethodInfo method)
@@ -29,15 +28,22 @@ namespace CloudMesh.Serialization
             // Do not serialize cancellationTokens
             parameters = parameters.Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
 
-            var layoutId = methodsToLayoutIds.GetOrAdd(method, _ =>
-                MurmurHash.StringHash(string.Join(",", parameters.Select(p => $"{p.Name}:{p.ParameterType}"))));
-
-            return layoutToTypes.GetOrAdd(layoutId, _ => BuildNewSerializerType(layoutId, parameters!));
+            var methodPath = $"{method.DeclaringType!.Assembly.GetName().Name}.{method.DeclaringType.FullName}.{method.Name}";
+            var layoutId = MurmurHash.StringHash(methodPath);
+            return layoutToTypes.GetOrAdd(layoutId, l => BuildNewSerializerType(l, parameters!));
         }
+
+        private static readonly ConcurrentDictionary<string, Type> generatedTypes = new();
 
         private static SerializerType BuildNewSerializerType(int layoutId, ParameterInfo[] parameters)
         {
-            var serializerType = Emitter.ModuleBuilder.DefineType($"SerializedMessage_{layoutId}",
+            var typeName = $"SerializedMessage_{layoutId:x8}";
+            if (generatedTypes.TryGetValue(typeName, out var existingType))
+            {
+                throw new ArgumentException("Layout ID already exists!");
+            }
+
+            var serializerType = Emitter.ModuleBuilder.DefineType(typeName,
                 TypeAttributes.Public | TypeAttributes.Sealed | TypeAttributes.Class);
 
             var props = new List<PropertyInfo>();
@@ -49,6 +55,8 @@ namespace CloudMesh.Serialization
             {
                 props.Add(builtType.GetProperty(parameter.Name, BindingFlags.Instance | BindingFlags.Public)!);
             }
+
+            generatedTypes[typeName] = builtType;
             return new(builtType, props.ToArray());
         }
 
@@ -74,6 +82,26 @@ namespace CloudMesh.Serialization
             for (var i = 0; i < serializationType.Properties.Length; i++)
                 serializationType.Properties[i].SetValue(obj, filteredArguments[i]);
             return obj;
+        }
+
+        public static object?[] GetParameterArray(
+            MethodInfo method, 
+            SerializerType serializerType, 
+            object source, 
+            CancellationToken cancellationTokenToInject)
+        {
+            var methodParameters = method.GetParameters();
+            var result = new object?[methodParameters.Length];
+
+            var propertyIdx = 0;
+            for (var i = 0; i < methodParameters.Length; i++)
+            {
+                if (methodParameters[i].ParameterType == typeof(CancellationToken))
+                    result[i] = cancellationTokenToInject;
+                else
+                    result[i] = serializerType.Properties[propertyIdx++].GetGetMethod()?.Invoke(source, null);
+            }
+            return result;
         }
     }
 

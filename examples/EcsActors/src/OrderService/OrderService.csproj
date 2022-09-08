@@ -1,10 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<OutputType>Exe</OutputType>
+
 		<TargetFramework>net6.0</TargetFramework>
 		<LangVersion>latest</LangVersion>
 		<AWSProjectType>Lambda</AWSProjectType>
-		<AssemblyName>bootstrap</AssemblyName>
 		<!-- This property makes the build directory similar to a publish directory and helps the AWS .NET Lambda Mock Test Tool find project dependencies. -->
 		<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
@@ -12,8 +11,12 @@
 
 		<!-- Generate ready to run images during publishing to improvement cold starts. -->
 		<PublishReadyToRun>true</PublishReadyToRun>
-
+		<AssemblyName>bootstrap</AssemblyName>
 	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<OutputType>Exe</OutputType>
+	</PropertyGroup>				   
 
 	<!-- 
   When publishing Lambda functions for ARM64 to the provided.al2 runtime a newer version of libicu needs to be included
@@ -25,16 +28,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Amazon.Lambda.RuntimeSupport" Version="1.8.2" />
-		<PackageReference Include="Amazon.Lambda.Core" Version="2.1.0" />
-		<PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.3.0" />
-		<PackageReference Include="AWSSDK.IoT" Version="3.7.17.4" />
-		<PackageReference Include="AWSSDK.ACMPCA" Version="3.7.4.56" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
-	</ItemGroup>
-
-	<ItemGroup>
-	  <ProjectReference Include="..\EcsActorsExample.Contracts\EcsActorsExample.Contracts.csproj" />
-	  <ProjectReference Include="..\EcsActorsExample\EcsActorsExample.csproj" />
+	  <ProjectReference Include="..\..\..\..\src\CloudMesh.Hosting.Lambda\CloudMesh.Hosting.Lambda.csproj" />
+	  <ProjectReference Include="..\Example1.Contracts\Example1.Contracts.csproj" />
 	</ItemGroup>
 </Project>

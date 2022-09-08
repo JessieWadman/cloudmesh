@@ -1,12 +1,12 @@
-name: Publish
+name: Build
 on:
   push:
-    branches:
-      - main # Default release branch, may also be named 'master' or 'develop'
-
+    branches-ignore: 
+      - 'main'
+    
 jobs:
   publish:
-    name: Build & Test & Publish
+    name: Build & Test
     runs-on: ubuntu-latest
     steps:
       

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Diagnostics.Metrics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.Serialization;
@@ -19,6 +20,8 @@ namespace CloudMesh.Actors.Hosting
         private static readonly ConcurrentDictionary<Type, ConstructorInfo> constructors = new();
 
         private static readonly Dictionary<Type, Func<string, string, IHostedActor>> factories = new();
+
+        private static readonly Counter<int> createCounter = Metrics.Meter.CreateCounter<int>("actorsCreated");
 
         public static IHostedActor Create(
             string actorName,
@@ -39,7 +42,9 @@ namespace CloudMesh.Actors.Hosting
 
             var constructor = constructors.GetOrAdd(actorType, GetConstructor);
 
-            defaultConstructor.Invoke(actor, Array.Empty<object>());
+            constructor.Invoke(actor, Array.Empty<object>());
+
+            createCounter.Add(1);
 
             return (IHostedActor)actor!;
         }

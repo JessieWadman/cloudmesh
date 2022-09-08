@@ -1,6 +1,6 @@
 ﻿using System.Runtime.ExceptionServices;
 
-namespace CloudMesh.Remoting
+namespace CloudMesh.Serialization
 {
     public class ExceptionContext
     {

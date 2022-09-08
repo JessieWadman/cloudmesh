@@ -2,6 +2,7 @@
 using CloudMesh.Actors.Hosting;
 using CloudMesh.Hosting.AspNetCore;
 using CloudMesh.Services;
+using CloudMesh.Services.Hosting;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -24,7 +25,7 @@ namespace Microsoft.Extensions.DependencyInjection
             where TImplementation : Actor, TActor
         {
             AddActorInfrastructure(services);
-            ActorTypes.Register<TImplementation>(typeof(TActor).Name);
+            ActorTypes.Register<TActor, TImplementation>();
             return services;
         }
 

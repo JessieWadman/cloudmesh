@@ -16,7 +16,7 @@ export interface CloudMeshProps {
 
 export class CloudMesh extends Construct {
 
-    public namespace: INamespace;
+    public namespace: PrivateDnsNamespace;
     private actors: Service;
     private services: Service;
     private stores: Service;
