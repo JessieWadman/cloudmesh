@@ -1,94 +1,28 @@
-﻿using CloudMesh.Aws.ServiceDiscovery;
-using CloudMesh.Routing;
-using EcsActorsExample.Actors;
-using EcsActorsExample.Contracts;
-using EcsActorsExample.Services;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using System.Collections.Immutable;
+using CartServices;
+using Proto;
+using Proto.Cluster;
+using System.Reflection;
+using System.Runtime.InteropServices;
 
-AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
-
-void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
-{
-    Console.WriteLine($"UNHANDLED APPLICATION EXCEPTION [{(e.IsTerminating ? "Terminating" : "Recovering")}]: {e.ExceptionObject}");
-}
-
-await using var serviceDiscovery = new CloudMapServiceDiscovery(
-    Environment.GetEnvironmentVariable("cloudMapNamespace") ?? "example1.cloudmesh"
-);
+Console.WriteLine($"Starting up {Assembly.GetEntryAssembly().GetName().Name} on {RuntimeInformation.OSDescription} - {RuntimeInformation.OSArchitecture} - {RuntimeInformation.FrameworkDescription}");
 
 var builder = WebApplication.CreateBuilder(args);
 
-#if (OPEN_TELEMETRY)
-builder.Services.AddOpenTelemetryTracing(tracing =>
-{
-    tracing
-        .AddAspNetCoreInstrumentation()
-        .AddHttpClientInstrumentation()
-        .AddAWSInstrumentation()
-        .AddSource(nameof(RandomInvokeService))
-        .SetResourceBuilder(ResourceBuilder.CreateDefault()
-            .AddService(typeof(Cart).Assembly.GetName().Name)
-            .AddTelemetrySdk()
-        )
-        .SetErrorStatusOnException(true)
-        .AddZipkinExporter();
-        /*
-        .AddOtlpExporter(options =>
-        {
-            options.Endpoint = new Uri("http://localhost:4317"); // Signoz Endpoint
-        });*/
-});
-#endif
-
-builder.Services.AddAwsCloudMesh();
-// builder.Services.AddHostedService<SingletonTest>();
-
-builder.Services.AddActor<ICart, Cart>();
-builder.Services.AddService<ICartService, CartService>();
-
-builder.Services.AddHostedService<RandomInvokeService>();
+builder.Services.AddActorSystem();
+builder.Services.AddHostedService<ActorSystemClusterHostedService>();
+builder.Services.AddHostedService<VehicleSimulator>();
 
 var app = builder.Build();
 
-#if (MOCK_ROUTER)
+var loggerFactory = app.Services.GetRequiredService<ILoggerFactory>();
+Proto.Log.SetLoggerFactory(loggerFactory);
 
-var mockResolver = new MockRouteResolver();
-Router.RouteResolver = mockResolver;
+app.MapGet("/vehicles/{identity}", async (ActorSystem actorSystem, string identity) =>
+{
+    return await actorSystem
+        .Cluster()
+        .GetVehicleGrain(identity)
+        .GetCurrentPosition(CancellationToken.None);
+});
 
-app.Services.GetRequiredService<IHostApplicationLifetime>()
-    .ApplicationStarted.Register(() =>
-    {
-        var localIp = app.Urls
-            .Select(u => new Uri(u))
-            .Where(u => u.Scheme == "http")
-            .Select(u => $"{u.Host}:{u.Port}")
-            .First();
-        mockResolver.Set<ICart>("Actors", new[] { new ResourceInstance("1", ResourceIdentifier.Parse($"http://{localIp}"), ImmutableDictionary<string, string>.Empty) });
-        mockResolver.Set<ICartService>("Services", new[] { new ResourceInstance("1", ResourceIdentifier.Parse($"http://{localIp}"), ImmutableDictionary<string, string>.Empty) });
-        mockResolver.Set<IFulfillmentService>("Services", new[] { new ResourceInstance("IFulfillmentService", ResourceIdentifier.Parse("lambda://Example1Stack-OrderServiceHandler31BDE8FC-vCVlNTwXKlME"), ImmutableDictionary<string, string>.Empty) });
-        
-        /*        
-        mockResolver.Set("Storage", "StateStore", new[] { new ResourceInstance("1", new("sql", "localhost:1433"), ImmutableDictionary<string, string>.Empty.Add("username", "sa")) });
-        mockResolver.Set<IOrderService>("Services", new[] { new ResourceInstance("1", ResourceIdentifier.Parse("lambda://invocation-test"), ImmutableDictionary<string, string>.Empty) });*/
-    });
-#endif
-
-if (app.Environment.IsDevelopment())
-    app.UseDeveloperExceptionPage();
-else
-    app.UseHttpsRedirection();
-
-app.UseRouting();
-app.MapActors();
-app.MapServices();
-
-#if (!RELEASE)
-app.Urls.Add($"http://{LocalIpAddressResolver.Instance.Resolve()}:3500");
-#endif
-
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
-logger.LogInformation("Running on {ip}", LocalIpAddressResolver.Instance.Resolve());
-
-await app.RunAsync();
+app.Run();

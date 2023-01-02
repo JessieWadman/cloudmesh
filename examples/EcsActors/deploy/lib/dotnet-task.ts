@@ -3,7 +3,7 @@ import { ISecurityGroup, Peer, Port, SecurityGroup, SubnetType } from "aws-cdk-l
 import { Repository } from "aws-cdk-lib/aws-ecr";
 import { DockerImageAsset, Platform } from "aws-cdk-lib/aws-ecr-assets";
 import { AwsLogDriver, Compatibility, ContainerImage, CpuArchitecture, DeploymentControllerType, FargateService, ICluster, OperatingSystemFamily, Protocol, TaskDefinition } from "aws-cdk-lib/aws-ecs";
-import { Effect, IRole, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
+import { Effect, IRole, Policy, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from "aws-cdk-lib/aws-iam";
 import { Code, Function } from "aws-cdk-lib/aws-lambda";
 import { DockerImageName, ECRDeployment } from "cdk-ecr-deployment";
 import { Construct } from "constructs";
@@ -112,6 +112,18 @@ export class DotNetTask extends Construct {
                               "xray:GetSamplingRules",
                               "xray:GetSamplingTargets",
                               "xray:GetSamplingStatisticSummaries"
+                            ],
+                            resources: ['*']
+                        })
+                    ]
+                }),
+                ecs: new PolicyDocument({
+                    statements: [
+                        new PolicyStatement({
+                            effect: Effect.ALLOW,
+                            actions: [
+                                'ecs:*',
+                                'servicediscovery:*'
                             ],
                             resources: ['*']
                         })

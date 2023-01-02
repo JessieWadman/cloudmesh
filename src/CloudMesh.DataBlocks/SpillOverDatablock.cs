@@ -4,11 +4,20 @@ using System.Runtime.CompilerServices;
 
 namespace CloudMesh.DataBlocks
 {
-    public class RoundRobinDataBlock : DataBlock
+    /// <summary>
+    /// This differs from round-robin in that round-robin will always advance to the next one 
+    /// whenever a message is written.
+    /// This will only advance to the next when a write fails.
+    /// I.e. it will continuously write to the same one, until backpressure forms, and then move to the next
+    /// This is useful for writers where you want few, big writes, rather than even spread. 
+    /// This lowers cost for things like Timestream and CloudWatch metrics, where you want as few
+    /// batch-writes as possible, with as big a batch as possible.
+    /// </summary>
+    public class SpillOverDataBlock : DataBlock
     {
         private readonly bool advanceOnSuccess;
 
-        public RoundRobinDataBlock(bool advanceOnSuccess = true)
+        public SpillOverDataBlock(bool advanceOnSuccess = false)
             : base(1)
         {
             this.advanceOnSuccess = advanceOnSuccess;
@@ -39,7 +48,7 @@ namespace CloudMesh.DataBlocks
             {
                 var targets = Children.ToArray();
                 var targetCount = targets.Length;
-                
+
                 if (targetCount == 0)
                     return;
 
@@ -75,13 +84,13 @@ namespace CloudMesh.DataBlocks
 
                 // If that fails (caused by backpressure), push it to the next one
                 // according to round-robin, and advance by one.
-                var nextTarget = targets[currentTarget];                
+                var nextTarget = targets[currentTarget];
                 await nextTarget.SubmitAsync(msg, this);
                 if (advanceOnSuccess)
                     Advance(targetCount);
             });
 
-            return TaskHelper.CompletedTask;
+            return ValueTask.CompletedTask;
         }
     }
 }

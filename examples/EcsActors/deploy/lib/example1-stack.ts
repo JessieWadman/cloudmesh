@@ -96,7 +96,7 @@ export class Example1Stack extends cdk.Stack {
       repositoryName: 'emample1/cart-service',
       actorInterfaceTypes: ['ICart', 'IProduct'],
       serviceInterfaceTypes: ['ICartService'],
-      desiredCount: 1,
+      desiredCount: 5,
       maxHealthyPercent: 300,
       minHealthyPercent: 50
     });

@@ -1,0 +1,58 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "CartServices";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+message GetVehicleCurrentPositionResponse {
+  double latitude = 1;
+  double longitude = 2;
+  double heading = 3;
+  double speed = 4;
+}
+
+message VehicleSignOnRequest {
+	string messageId = 1;
+	int32 vehicle_number = 2;
+	int32 line_number = 3;
+	int32 journey_number = 4;
+	google.protobuf.Timestamp reportTimestamp = 5;
+	google.protobuf.Timestamp receivedTimestamp = 6;
+}
+
+message VehicleSignOffRequest {
+	string messageId = 1;
+	int32 vehicle_number = 2;	
+	int32 line_number = 3;
+	int32 journey_number = 4;
+	google.protobuf.Timestamp reportTimestamp = 5;
+	google.protobuf.Timestamp receivedTimestamp = 6;
+}
+
+message VehicleUpdatePositionRequest {
+	string messageId = 1;
+	int32 vehicle_number = 2;
+	double latitude = 3;
+	double longitude = 4;	
+	int32 line_number = 5;
+	int32 journey_number = 6;
+	double heading = 7;
+	double speed = 8;
+	google.protobuf.Timestamp reportTimestamp = 9;
+	google.protobuf.Timestamp receivedTimestamp = 10;
+}
+
+message UpdateDayReportRequest {
+	int32 operating_day = 1;
+	int32 vehicle_number = 2;
+	int32 line_number = 3;
+	int32 journey_number = 4;
+	int32 positions_on_time = 5;
+	int32 positions_late = 6;
+}
+
+message PositionDeliveredRequest {
+	string messageId = 1;
+	bool onTime = 2;
+}

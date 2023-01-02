@@ -16,21 +16,24 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.0" />
-		<PackageReference Include="OpenTelemetry.Contrib.Instrumentation.AWS" Version="1.0.1" />
-		<PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.4.0-alpha.2">
-		  <TreatAsUsed>true</TreatAsUsed>
-		</PackageReference>
-		<PackageReference Include="OpenTelemetry.Exporter.Zipkin" Version="1.4.0-alpha.2" />
-		<PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.0.0-rc9.6" />
-		<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.0.0-rc9.6" />
-		<PackageReference Include="OpenTelemetry.Instrumentation.Http" Version="1.0.0-rc9.6" />
+		<ProtoGrain Include="Grains.proto" AdditionalImportDirs="." />
+		<Protobuf Include="Messages.proto" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <ProjectReference Include="..\..\..\..\src\CloudMesh.Aws\CloudMesh.Aws.csproj" />
-	  <ProjectReference Include="..\..\..\..\src\CloudMesh.Hosting.AspNetCore\CloudMesh.Hosting.AspNetCore.csproj" />
+		<PackageReference Include="AWSSDK.ECS" Version="3.7.5.71" />
+		<PackageReference Include="AWSSDK.ServiceDiscovery" Version="3.7.3" />
+		<PackageReference Include="Proto.Actor" Version="0.33.0" />
+		<PackageReference Include="Proto.Cluster.AmazonECS" Version="0.33.0" />
+		<PackageReference Include="Proto.Remote" Version="0.33.0" />
+		<PackageReference Include="Proto.Cluster" Version="0.33.0" />
+		<PackageReference Include="Proto.Cluster.CodeGen" Version="0.33.0" />
+		<PackageReference Include="Proto.Cluster.TestProvider" Version="0.33.0" />
+		<PackageReference Include="Grpc.Tools" Version="2.48.1" />
+
+	</ItemGroup>
+
+	<ItemGroup>
 	  <ProjectReference Include="..\..\..\..\src\CloudMesh\CloudMesh.csproj" />
-	  <ProjectReference Include="..\Example1.Contracts\Example1.Contracts.csproj" />
 	</ItemGroup>
 </Project>

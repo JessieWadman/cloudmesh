@@ -1,0 +1,23 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "CartServices";
+
+import "google/protobuf/empty.proto";
+import "Messages.proto";
+
+service VehicleGrain {
+  rpc UpdatePosition (VehicleUpdatePositionRequest) returns (google.protobuf.Empty);
+  rpc SignOn (VehicleSignOnRequest) returns (google.protobuf.Empty);
+  rpc SignOff (VehicleSignOffRequest) returns (google.protobuf.Empty);
+  rpc GetCurrentPosition(google.protobuf.Empty) returns (GetVehicleCurrentPositionResponse);
+}
+
+service VehicleRouteGrain {
+  rpc SignOn (VehicleSignOnRequest) returns (google.protobuf.Empty);
+  rpc SignOff (VehicleSignOffRequest) returns (google.protobuf.Empty);
+  rpc OnPositionDelivered (PositionDeliveredRequest) returns (google.protobuf.Empty);
+}
+
+service DayReportGrain {
+	rpc UpdateDayReport(UpdateDayReportRequest) returns (google.protobuf.Empty);
+}
