@@ -19,7 +19,6 @@ namespace CloudMesh.DataBlocks.Tests
 
             protected override ValueTask BeforeStart()
             {
-                
                 return ValueTask.CompletedTask;
             }
 
@@ -48,7 +47,9 @@ namespace CloudMesh.DataBlocks.Tests
             Assert.False(block.Completed.Task.IsCompleted);
 
             var timeoutDelay = block.Completed.Task;
-            var longerDelayThanTimeout = Task.Delay(500);
+            var longerDelayThanTimeout = Task.Delay(750);
+
+            await Task.Yield();
             
             var actualTaskCompletedFirst = await Task.WhenAny(timeoutDelay, longerDelayThanTimeout);
             Assert.Equal(timeoutDelay, actualTaskCompletedFirst);
