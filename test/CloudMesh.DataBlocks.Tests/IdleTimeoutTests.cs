@@ -6,6 +6,7 @@ namespace CloudMesh.DataBlocks.Tests
         public class TimeoutTestBlock : DataBlock
         {
             public TaskCompletionSource Completed = new();
+            public TaskCompletionSource Started = new();
 
             public TimeoutTestBlock()
             {
@@ -13,6 +14,7 @@ namespace CloudMesh.DataBlocks.Tests
 
                 ReceiveAsync<string>(async _ =>
                 {
+                    Started.SetResult();
                     await Task.Delay(100);
                 });
             }
@@ -46,13 +48,11 @@ namespace CloudMesh.DataBlocks.Tests
             Assert.False(block.Completed.Task.IsCanceled);
             Assert.False(block.Completed.Task.IsCompleted);
 
-            var timeoutDelay = block.Completed.Task;
-            var longerDelayThanTimeout = Task.Delay(750);
+            var blockTimeoutCompletion = block.Completed.Task;
+            var longerDelayThanTimeout = Task.Delay(2750);
 
-            await Task.Yield();
-            
-            var actualTaskCompletedFirst = await Task.WhenAny(timeoutDelay, longerDelayThanTimeout);
-            Assert.Equal(timeoutDelay, actualTaskCompletedFirst);
+            var actualTaskCompletedFirst = await Task.WhenAny(blockTimeoutCompletion, longerDelayThanTimeout);
+            Assert.Equal(blockTimeoutCompletion, actualTaskCompletedFirst);
         }
 
         public class ParentBlock : DataBlock
