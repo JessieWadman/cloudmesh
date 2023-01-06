@@ -1,7 +1,15 @@
 ﻿using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace System
 {
+    public record DecimalSeparators(char ThousandSeparator, char DecimalSeparator)
+    {
+        public static readonly DecimalSeparators EN_US = new(',', '.');
+        public static readonly DecimalSeparators SV_SE = new(' ', ',');
+        public static readonly DecimalSeparators ISO = new(' ', '.');
+    }
+
     public static class OptimizationHelpers
     {
         private const int MaxDecimalLength = 29 + 1 + 29 + 9; // 29 integral digits, decimal separator, 28-29 decimal digits and 9 group separators
@@ -21,7 +29,7 @@ namespace System
         };
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool FastTryParseDecimal(string value, string sourceFormat, out decimal parsedValue)
+        public static bool FastTryParseDecimal(ReadOnlySpan<char> value, DecimalSeparators separators, out decimal parsedValue)
         {
             var sourceLength = value.Length;
             if (sourceLength == 0)
@@ -30,18 +38,14 @@ namespace System
                 return false;
             }
 
-            if (sourceFormat is null || sourceFormat.Length != 2)
-                sourceFormat = " .";
-
-            var thousandSeparator = sourceFormat[0];
-            var decimalSeparator = sourceFormat[1];
             if (sourceLength > MaxDecimalLength)
             {
                 parsedValue = default;
                 return false;
             }
 
-            value = UnsafeTrimAndConvertToInvariant(value, thousandSeparator, decimalSeparator, sourceLength);
+            if (separators.DecimalSeparator != '.' || separators.ThousandSeparator != ' ')
+                value = UnsafeTrimAndConvertToInvariant(value, separators.ThousandSeparator, separators.DecimalSeparator, sourceLength);
             sourceLength = value.Length;
 
             return FastTryParseDecimalImpl(value, sourceLength, out parsedValue);

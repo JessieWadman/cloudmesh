@@ -17,7 +17,6 @@ namespace CloudMesh.Serialization.Json
             AllowTrailingCommas = true,
             MaxDepth = 16,
             WriteIndented = false,
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
 
         public static readonly JsonSerializerOptions CamelCase = new()
@@ -28,28 +27,15 @@ namespace CloudMesh.Serialization.Json
             ReadCommentHandling = JsonCommentHandling.Skip,
             AllowTrailingCommas = true,
             MaxDepth = 16,
-            WriteIndented = false,
-            Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-
-        };
-
-        public static readonly JsonSerializerOptions PascalCase = new()
-        {
-            DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-            PropertyNameCaseInsensitive = true,
-            PropertyNamingPolicy = null,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true,
-            MaxDepth = 16,
-            WriteIndented = true
+            WriteIndented = false
         };
 
         public static string Merge(string originalJson, string newContent)
         {
             var outputBuffer = new ArrayBufferWriter<byte>();
 
-            using (JsonDocument jDoc1 = JsonDocument.Parse(originalJson))
-            using (JsonDocument jDoc2 = JsonDocument.Parse(newContent))
+            using (var jDoc1 = JsonDocument.Parse(originalJson))
+            using (var jDoc2 = JsonDocument.Parse(newContent))
             using (var jsonWriter = new Utf8JsonWriter(outputBuffer, new JsonWriterOptions { Indented = true }))
             {
                 JsonElement root1 = jDoc1.RootElement;

@@ -20,6 +20,7 @@ namespace CloudMesh.Serialization
     public class SerializationHelper
     {
         private static readonly ConcurrentDictionary<int, SerializerType> layoutToTypes = new();
+        private static readonly ConcurrentDictionary<MethodInfo, int> methodCache = new();
 
         public static SerializerType GetSerializerTypeForLayout(MethodInfo method)
         {
@@ -27,8 +28,14 @@ namespace CloudMesh.Serialization
             // Do not serialize cancellationTokens
             parameters = parameters.Where(p => p.ParameterType != typeof(CancellationToken)).ToArray();
 
-            var methodPath = $"{method.DeclaringType!.Assembly.GetName().Name}.{method.DeclaringType.FullName}.{method.Name}";
-            var layoutId = MurmurHash.StringHash(methodPath);
+            var layoutId = methodCache.GetOrAdd(method, m =>
+            {
+                var methodPath = $"{method.DeclaringType!.Assembly.GetName().Name}.{method.DeclaringType.FullName}.{method.Name}";
+                var methodExpresion = $"{methodPath}({string.Join(',', parameters.Select(p => p.ParameterType.Name))})";
+                var layoutId = MurmurHash.StringHash(methodExpresion);
+                return layoutId;
+            });
+
             return layoutToTypes.GetOrAdd(layoutId, l => BuildNewSerializerType(l, parameters!));
         }
 

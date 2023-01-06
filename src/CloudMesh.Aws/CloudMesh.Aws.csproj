@@ -16,6 +16,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+		<ProjectReference Include="..\CloudMesh.Actors\CloudMesh.Actors.csproj" />
 		<ProjectReference Include="..\CloudMesh\CloudMesh.csproj" />
 	</ItemGroup>
 

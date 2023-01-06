@@ -34,6 +34,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\..\..\src\CloudMesh.Actors\CloudMesh.Actors.csproj" />
 	  <ProjectReference Include="..\..\..\..\src\CloudMesh\CloudMesh.csproj" />
 	</ItemGroup>
 </Project>
