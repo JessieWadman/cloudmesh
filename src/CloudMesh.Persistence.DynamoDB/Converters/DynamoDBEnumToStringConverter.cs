@@ -1,7 +1,7 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
 
-namespace CloudMesh.Persistence.DynamoDB
+namespace CloudMesh.Persistence.DynamoDB.Converters
 {
     public class DynamoDBEnumToStringConverter<TEnum> : IPropertyConverter
     {
@@ -62,12 +62,12 @@ namespace CloudMesh.Persistence.DynamoDB
         public object FromEntry(DynamoDBEntry entry)
         {
             int? nullableInt;
-            
+
             if (entry is DynamoDBNull || entry.AsString() == "null")
             {
                 nullableInt = null;
             }
-            else 
+            else
             {
                 nullableInt = entry.AsInt();
             }
@@ -106,7 +106,7 @@ namespace CloudMesh.Persistence.DynamoDB
 
         public DynamoDBEntry ToEntry(object value)
         {
-            if ((int) value == 0)
+            if ((int)value == 0)
             {
                 return DynamoDBNull.Null;
             }
@@ -123,7 +123,7 @@ namespace CloudMesh.Persistence.DynamoDB
 
             if (entry is DynamoDBNull)
             {
-                timeOnly = default(TimeOnly);
+                timeOnly = default;
             }
             else
             {
@@ -135,7 +135,7 @@ namespace CloudMesh.Persistence.DynamoDB
 
         public DynamoDBEntry ToEntry(object value)
         {
-            if (TimeOnly.Parse(value.ToString()) == default(TimeOnly))
+            if (TimeOnly.Parse(value.ToString()) == default)
             {
                 return DynamoDBNull.Null;
             }

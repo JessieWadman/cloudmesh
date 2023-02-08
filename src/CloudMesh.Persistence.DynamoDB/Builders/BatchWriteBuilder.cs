@@ -1,7 +1,14 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 
-namespace CloudMesh.Persistence.DynamoDB
+namespace CloudMesh.Persistence.DynamoDB.Builders
 {
+    public interface IBatchWriteBuilder<T>
+    {
+        IBatchWriteBuilder<T> Save(params T[] items);
+        IBatchWriteBuilder<T> Delete(params T[] items);
+        ValueTask ExecuteAsync(CancellationToken cancellationToken);
+    }
+
     public class BatchWriteBuilder<T> : IBatchWriteBuilder<T>
     {
         public enum BatchWriteOp
@@ -17,7 +24,7 @@ namespace CloudMesh.Persistence.DynamoDB
         public BatchWriteBuilder(DynamoDBContext context, Func<DynamoDBOperationConfig> config)
         {
             this.context = context ?? throw new ArgumentNullException(nameof(context));
-            this.config = config ?? throw new ArgumentNullException(nameof(config));            
+            this.config = config ?? throw new ArgumentNullException(nameof(config));
         }
 
         public ValueTask ExecuteAsync(CancellationToken cancellationToken)

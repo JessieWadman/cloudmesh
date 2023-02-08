@@ -1,4 +1,5 @@
 ﻿using Amazon.DynamoDBv2.DocumentModel;
+using CloudMesh.Persistence.DynamoDB.Builders;
 using CloudMesh.Persistence.DynamoDB.Helpers;
 using CloudMesh.Serialization.Json;
 using System.Collections;
@@ -20,6 +21,11 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
                 rows = tables[tableName] = new List<string>();
 
             return new InMemoryRepository<T>(rows);
+        }
+
+        public ITransactWriteBuilder Transaction()
+        {
+            throw new NotImplementedException(); // Not supported in-memory 
         }
     }
 

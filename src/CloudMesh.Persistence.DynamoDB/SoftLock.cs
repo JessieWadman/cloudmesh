@@ -1,4 +1,5 @@
-﻿using CloudMesh.Utils;
+﻿using CloudMesh.Persistence.DynamoDB.Builders;
+using CloudMesh.Utils;
 using System.Linq.Expressions;
 
 namespace CloudMesh.Persistence.DynamoDB

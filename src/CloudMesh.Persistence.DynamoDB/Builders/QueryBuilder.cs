@@ -4,8 +4,21 @@ using CloudMesh.Persistence.DynamoDB.Helpers;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 
-namespace CloudMesh.Persistence.DynamoDB
+namespace CloudMesh.Persistence.DynamoDB.Builders
 {
+    public interface IQueryBuilder<T>
+    {
+        IQueryBuilder<T> UseIndex(string indexName);
+        IQueryBuilder<T> Reverse();
+        IQueryBuilder<T> UseConsistentRead();
+        IQueryBuilder<T> WithHashKey(DynamoDBValue partitionKey);
+        IQueryBuilder<T> WithSortKey(QueryOperator queryOp, params DynamoDBValue[] value);
+        IAsyncEnumerable<T> ToAsyncEnumerable(CancellationToken cancellationToken);
+        Task<T[]> ToArrayAsync(CancellationToken cancellationToken);
+        IQueryBuilder<T> WithQueryFilter<R>(Expression<Func<T, R>> property, ScanOperator op, params R[] values);
+
+    }
+
     public class QueryBuilder<T> : IQueryBuilder<T>
     {
         private readonly DynamoDBContext context;
@@ -28,10 +41,10 @@ namespace CloudMesh.Persistence.DynamoDB
 
         public IQueryBuilder<T> WithQueryFilter<R>(Expression<Func<T, R>> property, ScanOperator op, params R[] values)
         {
-            this.queryFilter.Add(
+            queryFilter.Add(
                 new ScanCondition(
-                    ExpressionHelper.GetPropertyInfo(property).Name, 
-                    op, 
+                    ExpressionHelper.GetPropertyInfo(property).Name,
+                    op,
                     values.Cast<object>().ToArray()));
             return this;
         }
@@ -46,7 +59,7 @@ namespace CloudMesh.Persistence.DynamoDB
 
         public IQueryBuilder<T> Reverse()
         {
-            this.reverse = true;
+            reverse = true;
             return this;
         }
 
@@ -54,7 +67,7 @@ namespace CloudMesh.Persistence.DynamoDB
         {
             if (!string.IsNullOrEmpty(indexName))
                 throw new InvalidOperationException("Cannot use consistent read on global secondary indexes");
-            this.consistentRead = true;
+            consistentRead = true;
             return this;
         }
 
@@ -76,19 +89,19 @@ namespace CloudMesh.Persistence.DynamoDB
             var opConfig = config();
             if (reverse)
                 opConfig.BackwardQuery = true;
-            opConfig.ConditionalOperator = this.conditionalOp;
-            opConfig.ConsistentRead = this.consistentRead;
+            opConfig.ConditionalOperator = conditionalOp;
+            opConfig.ConsistentRead = consistentRead;
             if (!string.IsNullOrWhiteSpace(indexName))
                 opConfig.IndexName = indexName;
 
             if (queryFilter != null && queryFilter.Count > 0)
-                opConfig.QueryFilter = this.queryFilter;
+                opConfig.QueryFilter = queryFilter;
 
             AsyncSearch<T> search;
             if (sortKeyValues != null && sortKeyValues.Length > 0)
-                search = this.context.QueryAsync<T>(partitionKey.Value, queryOp, sortKeyValues.Select(v => v.Value), opConfig);
+                search = context.QueryAsync<T>(partitionKey.Value, queryOp, sortKeyValues.Select(v => v.Value), opConfig);
             else
-                search = this.context.QueryAsync<T>(partitionKey.Value, opConfig);
+                search = context.QueryAsync<T>(partitionKey.Value, opConfig);
 
             return search;
         }
@@ -96,7 +109,7 @@ namespace CloudMesh.Persistence.DynamoDB
         public async IAsyncEnumerable<T> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken)
         {
             var search = CreateSearch();
-            
+
             while (!search.IsDone)
             {
                 var page = await search.GetNextSetAsync(cancellationToken);

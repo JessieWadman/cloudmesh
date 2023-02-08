@@ -1,6 +1,7 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
 using Amazon.DynamoDBv2.Model;
+using CloudMesh.Persistence.DynamoDB.Converters;
 using System.Globalization;
 using System.Reflection;
 using System.Text.Json;
@@ -19,14 +20,11 @@ namespace CloudMesh.Persistence.DynamoDB
                     return new AttributeValue { S = value.ToString() };
                 }
 
-                return new AttributeValue { N = ((int)(object)value).ToString() };
+                return new AttributeValue { N = ((int)(object)value!).ToString() };
             }
 
-            if (value is null)
-            {
-                if (typeof(R) == typeof(string))
-                    return new AttributeValue { S = null };
-            }
+            if (value is null && typeof(R) == typeof(string))
+                return new AttributeValue { S = null };
 
             return value switch
             {

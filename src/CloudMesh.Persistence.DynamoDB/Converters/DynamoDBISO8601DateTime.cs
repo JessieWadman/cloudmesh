@@ -2,7 +2,7 @@
 using Amazon.DynamoDBv2.DocumentModel;
 using System;
 
-namespace CloudMesh.Persistence.DynamoDB
+namespace CloudMesh.Persistence.DynamoDB.Converters
 {
     public class DynamoDBDateTimeAttribute : DynamoDBPropertyAttribute
     {
@@ -11,7 +11,7 @@ namespace CloudMesh.Persistence.DynamoDB
         {
         }
 
-        public DynamoDBDateTimeAttribute(string attributeName) 
+        public DynamoDBDateTimeAttribute(string attributeName)
             : base(attributeName, typeof(ISO8601DateTimeConverter))
         {
         }

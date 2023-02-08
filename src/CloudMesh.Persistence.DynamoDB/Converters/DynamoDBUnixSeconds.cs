@@ -1,23 +1,23 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
 
-namespace CloudMesh.Persistence.DynamoDB
+namespace CloudMesh.Persistence.DynamoDB.Converters
 {
-    public class DynamoDBUnixMillisecondsAttribute : DynamoDBPropertyAttribute
+    public class DynamoDBUnixSecondsAttribute : DynamoDBPropertyAttribute
     {
-        public DynamoDBUnixMillisecondsAttribute()
-            : base(typeof(DynamoDBUnixMillisecondsConverter))
+        public DynamoDBUnixSecondsAttribute()
+            : base(typeof(DynamoDBUnixSecondsConverter))
         {
         }
 
-        public DynamoDBUnixMillisecondsAttribute(string attributeName) 
-            : base(attributeName, typeof(DynamoDBUnixMillisecondsConverter))
+        public DynamoDBUnixSecondsAttribute(string attributeName)
+            : base(attributeName, typeof(DynamoDBUnixSecondsConverter))
         {
         }
     }
 
     // Converts the complex type DateTimeOffset to unix time milliseconds (int64) and vice-versa.
-    public class DynamoDBUnixMillisecondsConverter : IPropertyConverter
+    public class DynamoDBUnixSecondsConverter : IPropertyConverter
     {
         public DynamoDBEntry ToEntry(object value)
         {
@@ -32,14 +32,16 @@ namespace CloudMesh.Persistence.DynamoDB
                     return new Primitive { Value = value, Type = DynamoDBEntryType.Numeric };
             }
             else if (value is DateTimeOffset dto)
-                return new Primitive { Value = dto.ToUnixTimeMilliseconds(), Type = DynamoDBEntryType.Numeric };
+                return new Primitive { Value = dto.ToUnixTimeSeconds(), Type = DynamoDBEntryType.Numeric };
             else if (value is DateTime dt)
-                return new Primitive { Value = new DateTimeOffset(dt.ToUniversalTime(), TimeSpan.Zero).ToUnixTimeMilliseconds(), Type = DynamoDBEntryType.Numeric };
+                return new Primitive { Value = new DateTimeOffset(dt.ToUniversalTime(), TimeSpan.Zero).ToUnixTimeSeconds(), Type = DynamoDBEntryType.Numeric };
+            else if (value is DateOnly don)
+                return new Primitive { Value = don.ToUnixTimeSeconds(), Type = DynamoDBEntryType.Numeric };
 
             throw new NotSupportedException("Unsupported property type!");
         }
 
-        public object FromEntry(DynamoDBEntry entry)
+        public object? FromEntry(DynamoDBEntry entry)
         {
             if (entry as Primitive is null || (entry as Primitive).Value is null)
                 return null;
@@ -53,7 +55,7 @@ namespace CloudMesh.Persistence.DynamoDB
                 return null;
             }
 
-            return DateTimeOffset.FromUnixTimeMilliseconds((entry as Primitive).AsLong());            
+            return DateTimeOffset.FromUnixTimeMilliseconds((entry as Primitive).AsLong());
         }
     }
 }

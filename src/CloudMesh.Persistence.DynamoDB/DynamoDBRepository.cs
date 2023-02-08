@@ -2,6 +2,7 @@
 using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
 using Amazon.DynamoDBv2.Model;
+using CloudMesh.Persistence.DynamoDB.Builders;
 using CloudMesh.Persistence.DynamoDB.Helpers;
 
 namespace CloudMesh.Persistence.DynamoDB

@@ -12,29 +12,21 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
         public static PropertyInfo GetPropertyInfo<TSource, TProperty>(
             Expression<Func<TSource, TProperty>> propertyLambda)
         {
-            Type type = typeof(TSource);
+            var type = typeof(TSource);
 
-            if (propertyLambda.Body as MemberExpression == null)
+            if (propertyLambda.Body is not MemberExpression memberExpression || memberExpression == null)
             {
                 throw new ArgumentException(string.Format(
                     "Expression '{0}' refers to a method, not a property.",
                     propertyLambda.ToString()));
             }
 
-            var propInfo = (propertyLambda.Body as MemberExpression).Member as PropertyInfo;
-            if (propInfo == null)
-            {
-                throw new ArgumentException(string.Format(
-                    "Expression '{0}' refers to a field, not a property.",
-                    propertyLambda.ToString()));
-            }
+            var propInfo = memberExpression.Member as PropertyInfo 
+                ?? throw new ArgumentException($"Expression '{propertyLambda}' refers to a field, not a property.");
 
-            if (type != propInfo.ReflectedType && !type.IsSubclassOf(propInfo.ReflectedType))
+            if (type != propInfo.ReflectedType && !type.IsSubclassOf(propInfo.ReflectedType!))
             {
-                throw new ArgumentException(string.Format(
-                    "Expression '{0}' refers to a property that is not from type {1}.",
-                    propertyLambda.ToString(),
-                    type));
+                throw new ArgumentException($"Expression '{propertyLambda}' refers to a property that is not from type {type}.");
             }
 
             return propInfo;
@@ -49,24 +41,24 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
             return Expression.Lambda<Func<T, object>>(propAsObject, parameter);
         }
 
-        private static object ConvertToPropertyType(object value, Type propertyType)
+        private static object? ConvertToPropertyType(object value, Type propertyType)
         {
             if (value is null)
                 return null;
 
-            if (value is string str && propertyType == typeof(Guid))
-                return Guid.Parse(str);
+            if (value is string guidString && propertyType == typeof(Guid))
+                return Guid.Parse(guidString);
             else if (propertyType == typeof(string) && value.GetType() != typeof(string))
                 return Convert.ToString(value, CultureInfo.InvariantCulture);
-            else if (value is string estr && propertyType.IsEnum)
-                return Enum.Parse(propertyType, estr);
+            else if (value is string enumString && propertyType.IsEnum)
+                return Enum.Parse(propertyType, enumString);
             return value;
         }
 
         public static Expression<Func<T, bool>> CreatePredicate<T>(params (PropertyInfo property, object value)[] predicates)
         {
             var parameter = Expression.Parameter(typeof(T), "x");
-            Expression comparison = null;
+            Expression? comparison = null;
             foreach (var (property, value) in predicates)
             {
                 var temp = ConvertToPropertyType(value, property.PropertyType);
@@ -85,7 +77,7 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
         public static Expression<Func<T, bool>> CreatePredicate<T>(PropertyInfo property, object value)
             => CreatePredicate<T>((property, value));
 
-        private static MemberExpression ExtractMemberExpression(Expression expression)
+        private static MemberExpression? ExtractMemberExpression(Expression expression)
         {
             if (expression.NodeType == ExpressionType.MemberAccess)
             {
@@ -101,7 +93,7 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
             return null;
         }
 
-        public static DynamoDBPropertyAttribute GetDynamoDBattribute(PropertyInfo property)
+        public static DynamoDBPropertyAttribute? GetDynamoDBAttribute(PropertyInfo property)
             => (from a in property.GetCustomAttributes(true).OfType<DynamoDBPropertyAttribute>()
                 let t = a.GetType()
                 where typeof(DynamoDBPropertyAttribute).IsAssignableFrom(t) &&
@@ -113,7 +105,7 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                 select a
                 ).FirstOrDefault();
 
-        public static IEnumerable<DynamoDBPropertyAttribute> GetDynamoDBattributes(PropertyInfo property)
+        public static IEnumerable<DynamoDBPropertyAttribute> GetDynamoDBAttributes(PropertyInfo property)
             => (from a in property.GetCustomAttributes(true).OfType<DynamoDBPropertyAttribute>()
                 let t = a.GetType()
                 where typeof(DynamoDBPropertyAttribute).IsAssignableFrom(t) &&
@@ -165,7 +157,8 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                 var arrayNotationIdx = part.IndexOf('[');
                 if (arrayNotationIdx > 0)
                     temp = part.Substring(0, arrayNotationIdx);
-                var property = currentType.GetProperty(temp, BindingFlags.Instance | BindingFlags.Public);
+                var property = currentType.GetProperty(temp, BindingFlags.Instance | BindingFlags.Public) 
+                    ?? throw new InvalidOperationException($"The property {temp} does not exist on type {currentType.Name}");
                 var dynamoDBPropertyName = GetDynamoDBPropertyName(property);
                 if (result != string.Empty)
                     result += ".";
@@ -183,35 +176,37 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
             return result;
         }
 
-        public static PropertyInfo GetHashKeyProperty<T>()
+        public static PropertyInfo? TryGetHashKeyProperty<T>()
         {
             var propQuery = from prop in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
                             let attrib = prop.GetCustomAttributes(true).OfType<DynamoDBHashKeyAttribute>().FirstOrDefault()
                             where attrib is not null && attrib.GetType() == typeof(DynamoDBHashKeyAttribute)
                             select prop;
 
-            return propQuery.FirstOrDefault() ?? throw new InvalidOperationException($"Missing DynamoDBHashKey attribute on type {typeof(T).Name}");
+            return propQuery.FirstOrDefault();
+        }
+
+        public static PropertyInfo GetHashKeyProperty<T>()
+            => TryGetHashKeyProperty<T>() ?? throw new InvalidOperationException($"Missing DynamoDBHashKey attribute on type {typeof(T).Name}");
+        
+
+        public static PropertyInfo? TryGetRangeKeyProperty<T>()
+        {
+            var propQuery = from prop in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                            let attrib = prop.GetCustomAttributes(true).OfType<DynamoDBRangeKeyAttribute>().FirstOrDefault()
+                            where attrib is not null && attrib.GetType() == typeof(DynamoDBRangeKeyAttribute)
+                            select prop;
+
+            return propQuery.FirstOrDefault();
         }
 
         public static PropertyInfo GetRangeKeyProperty<T>()
-        {
-            var propQuery = from prop in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                            let attrib = prop.GetCustomAttributes(true).OfType<DynamoDBRangeKeyAttribute>().FirstOrDefault()
-                            where attrib is not null && attrib.GetType() == typeof(DynamoDBRangeKeyAttribute)
-                            select prop;
+            => TryGetRangeKeyProperty<T>() ?? throw new InvalidOperationException($"Missing DynamoDBRangeKey attribute on type {typeof(T).Name}");
 
-            return propQuery.FirstOrDefault() ?? throw new InvalidOperationException($"Missing DynamoDBRangeKey attribute on type {typeof(T).Name}");
-        }
 
         public static bool HasRangeKeyProperty<T>()
-        {
-            var propQuery = from prop in typeof(T).GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                            let attrib = prop.GetCustomAttributes(true).OfType<DynamoDBRangeKeyAttribute>().FirstOrDefault()
-                            where attrib is not null && attrib.GetType() == typeof(DynamoDBRangeKeyAttribute)
-                            select prop;
-
-            return propQuery.Any();
-        }
+            => TryGetRangeKeyProperty<T>() != null;
+        
 
         public static PropertyInfo GetGlobalSecondaryHashKeyProperty<T>(string indexName)
         {

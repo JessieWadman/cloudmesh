@@ -1,12 +1,68 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
-using Models.Persistence;
 using CloudMesh.Persistence.DynamoDB.Helpers;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using CloudMesh.Persistence.DynamoDB.Converters;
+using System.Diagnostics;
 
-namespace CloudMesh.Persistence.DynamoDB
+namespace CloudMesh.Persistence.DynamoDB.Builders
 {
+    [DebuggerDisplay("{ToString()}")]
+    public class ScanFilter
+    {
+        public string Property { get; init; }
+        public ScanOperator Operator { get; init; }
+        public object[] Values { get; init; }
+
+        public static ScanFilter With<T, P>(Expression<Func<T, P>> property, ScanOperator scanOperator, params P[] values)
+        {
+            return new ScanFilter
+            {
+                Property = ExpressionHelper.GetPropertyInfo(property).Name,
+                Operator = scanOperator,
+                Values = values.Cast<object>().ToArray()
+            };
+        }
+
+        public string ToString(params string[] argNames)
+        {
+            if (argNames.Length == 0)
+                throw new ArgumentNullException(nameof(argNames));
+
+            return Operator switch
+            {
+                ScanOperator.Equal => $"{Property} = {argNames[0]}",
+                ScanOperator.NotEqual => $"{Property} <> {argNames[0]}",
+                ScanOperator.LessThan => $"{Property} < {argNames[0]}",
+                ScanOperator.GreaterThan => $"{Property} > {argNames[0]}",
+                ScanOperator.LessThanOrEqual => $"{Property} <= {argNames[0]}",
+                ScanOperator.GreaterThanOrEqual => $"{Property} >= {argNames[0]}",
+                ScanOperator.BeginsWith => $"begins_with({Property}, {argNames[0]})",
+                ScanOperator.Contains => $"contains({Property}, {argNames[0]})",
+                ScanOperator.NotContains => $"not_contains({Property}, {argNames[0]})",
+                ScanOperator.Between => $"{Property} between {argNames[0]} AND {argNames[1]}",
+                ScanOperator.In => $"{Property} IN ({string.Join(", ", argNames)})",
+                ScanOperator.IsNull => $"attribute_type({Property}, NULL)",
+                ScanOperator.IsNotNull => $"NOT attribute_type({Property}, NULL)",
+                _ => throw new NotSupportedException("The requested scan operator is not supported")
+            };
+        }
+
+        public override string ToString() => ToString(":arg1");
+    }
+
+    public interface IScanBuilder<T>
+    {
+        IScanBuilder<T> UseIndex(string indexName);
+        IScanBuilder<T> Where<R>(Expression<Func<T, R>> property, ScanOperator scanOp, params R[] values);
+        IScanBuilder<T> Where<R>(Expression<Func<T, IEnumerable<R>>> property, ScanOperator scanOp, R value);
+        IScanBuilder<T> Reverse();
+        IScanBuilder<T> UseOrInsteadOfAnd();
+        IScanBuilder<T> UseConsistentRead();
+        IAsyncEnumerable<T> ToAsyncEnumerable(CancellationToken cancellationToken);
+        Task<T[]> ToArrayAsync(CancellationToken cancellationToken);
+    }
     public class ScanBuilder<T> : IScanBuilder<T>
     {
         private readonly IDynamoDBContext context;
@@ -31,7 +87,7 @@ namespace CloudMesh.Persistence.DynamoDB
 
         public IScanBuilder<T> UseConsistentRead()
         {
-            this.consistentRead = true;
+            consistentRead = true;
             return this;
         }
 
@@ -45,13 +101,13 @@ namespace CloudMesh.Persistence.DynamoDB
             if (typeof(R).IsAssignableFrom(typeof(DateOnly)))
             {
                 var prop = ExpressionHelper.GetPropertyInfo(property);
-                var propAttrib = ExpressionHelper.GetDynamoDBattribute(prop);
+                var propAttrib = ExpressionHelper.GetDynamoDBAttribute(prop);
                 var asLong = propAttrib is not null && propAttrib.Converter == typeof(DateOnlyToLongConverter);
 
                 var temp = ToObjectArray(
-                    values.Cast<DateOnly>(), 
+                    values.Cast<DateOnly>(),
                     d => asLong ? d.ToUnixTimeSeconds() : d.ToString());
-                    
+
                 filters.Add(new ScanFilter
                 {
                     Property = ExpressionHelper.GetPropertyInfo(property).Name,
@@ -79,7 +135,7 @@ namespace CloudMesh.Persistence.DynamoDB
             if (typeof(R).IsAssignableFrom(typeof(DateOnly)))
             {
                 var prop = ExpressionHelper.GetPropertyInfo(property);
-                var asLong = ExpressionHelper.GetDynamoDBattributes(prop)
+                var asLong = ExpressionHelper.GetDynamoDBAttributes(prop)
                     .Any(propAttr => propAttr is not null && propAttr.Converter == typeof(DateOnlyToLongConverter));
 
                 object temp = value;
@@ -107,13 +163,13 @@ namespace CloudMesh.Persistence.DynamoDB
 
         public IScanBuilder<T> Reverse()
         {
-            this.reverse = true;
+            reverse = true;
             return this;
         }
 
         public IScanBuilder<T> UseOrInsteadOfAnd()
         {
-            this.conditionalOp = ConditionalOperatorValues.Or;
+            conditionalOp = ConditionalOperatorValues.Or;
             return this;
         }
 
@@ -122,15 +178,15 @@ namespace CloudMesh.Persistence.DynamoDB
             var opConfig = config();
             if (reverse)
                 opConfig.BackwardQuery = true;
-            opConfig.ConditionalOperator = this.conditionalOp;
-            opConfig.ConsistentRead = this.consistentRead;
-            
+            opConfig.ConditionalOperator = conditionalOp;
+            opConfig.ConsistentRead = consistentRead;
+
             if (!string.IsNullOrWhiteSpace(indexName))
                 opConfig.IndexName = indexName;
 
             var scanOps = filters.Select(filter => new ScanCondition(filter.Property, filter.Operator, filter.Values)).ToArray();
 
-            var search = this.context.ScanAsync<T>(scanOps, opConfig);
+            var search = context.ScanAsync<T>(scanOps, opConfig);
             return search;
         }
 

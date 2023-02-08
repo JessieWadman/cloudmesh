@@ -2,7 +2,7 @@
 using Amazon.DynamoDBv2.DocumentModel;
 using System.Globalization;
 
-namespace Models.Persistence
+namespace CloudMesh.Persistence.DynamoDB.Converters
 {
     // Converts the complex type DateOnly to int64 and vice-versa.
     public class DateOnlyToLongConverter : IPropertyConverter

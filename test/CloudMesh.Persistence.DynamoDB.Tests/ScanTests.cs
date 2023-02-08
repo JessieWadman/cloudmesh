@@ -1,4 +1,5 @@
 using Amazon.DynamoDBv2.DataModel;
+using CloudMesh.Persistence.DynamoDB.Builders;
 using Moq;
 
 namespace CloudMesh.Persistence.DynamoDB.Tests
