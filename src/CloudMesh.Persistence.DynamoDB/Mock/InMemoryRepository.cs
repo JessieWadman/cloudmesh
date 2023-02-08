@@ -1,20 +1,26 @@
-﻿using Amazon.DynamoDBv2.DocumentModel;
+﻿using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.DataModel;
+using Amazon.DynamoDBv2.DocumentModel;
 using CloudMesh.Persistence.DynamoDB.Builders;
 using CloudMesh.Persistence.DynamoDB.Helpers;
 using CloudMesh.Serialization.Json;
 using System.Collections;
 using System.Diagnostics;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using Expression = System.Linq.Expressions.Expression;
 
 namespace CloudMesh.Persistence.DynamoDB.Mock
 {
-    public class InMemoryRepositoryFactory : IRepositoryFactory
+    public abstract class InMemoryDb
     {
-        private readonly Dictionary<string, List<string>> tables = new();
+        internal Dictionary<string, List<string>> tables = new();
+    }
 
+    public class InMemoryRepositoryFactory : InMemoryDb, IRepositoryFactory
+    {
         public IRepository<T> For<T>(string tableName)
         {
             if (!tables.TryGetValue(tableName, out var rows))
@@ -25,16 +31,148 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
 
         public ITransactWriteBuilder Transaction()
         {
-            throw new NotImplementedException(); // Not supported in-memory 
+            return new InMemoryTransactionBuilder(this, tables);
         }
     }
 
-    public class InMemoryRepository<T> : IRepository<T>
+    public class InMemoryTransactionBuilder : InMemoryDb, ITransactWriteBuilder
     {
-        private readonly List<string> _rows;
+        private readonly InMemoryRepositoryFactory repositoryFactory;
+        internal bool Success = true;
+
+        public InMemoryTransactionBuilder(InMemoryRepositoryFactory repositoryFactory, Dictionary<string, List<string>> tables)
+        {
+            foreach (var kp in tables)
+                this.tables[kp.Key] = kp.Value;
+            this.repositoryFactory = repositoryFactory ?? throw new ArgumentNullException(nameof(repositoryFactory));
+        }
+
+        public InMemoryTable<T> GetTable<T>(string tableName)
+        {
+            if (!tables.TryGetValue(tableName, out var rows))
+                rows = tables[tableName] = new List<string>();
+
+            return new InMemoryTable<T>(rows);
+        }
+
+        public ITransactWriteBuilder Delete<T>(string tableName, params DynamoDBValue[] hashKeys)
+        {
+            var table = GetTable<T>(tableName);
+            foreach (var hashKey in hashKeys)
+                table.DeleteAsync(hashKey, default).GetAwaiter().GetResult();
+            return this;
+        }
+
+        public ITransactWriteBuilder Delete<T>(string tableName, params T[] items)
+        {
+            var table = GetTable<T>(tableName);
+            table.DeleteAsync(default, items).GetAwaiter().GetResult();
+            return this;
+        }
+
+        public ITransactWriteBuilder Delete<T>(string tableName, params (DynamoDBValue HashKey, DynamoDBValue RangeKey)[] keys)
+        {
+            var table = GetTable<T>(tableName);
+            foreach (var key in keys)
+                table.DeleteAsync(key.HashKey, key.RangeKey, default).GetAwaiter().GetResult();
+            return this;
+        }
+
+        public ITransactWriteBuilder Save<T>(string tableName, params T[] items)
+        {
+            GetTable<T>(tableName).SaveAsync(items, default).GetAwaiter().GetResult();
+            return this;
+        }
+
+        private T Find<T>(InMemoryTable<T> table, object keyValues)
+        {
+            var query = table.Rows;
+
+            var hashKeyProp = ExpressionHelper.TryGetHashKeyProperty<T>();
+            if (hashKeyProp != null)
+            {
+                var keyValue = hashKeyProp.GetValue(keyValues);
+                query = query.Where(ExpressionHelper.CreatePredicate<T>(hashKeyProp, keyValue));
+
+                var rangeKeyProp = ExpressionHelper.TryGetRangeKeyProperty<T>();
+                if (rangeKeyProp != null)
+                {
+                    keyValue = rangeKeyProp.GetValue(keyValues);
+                    query = query.Where(ExpressionHelper.CreatePredicate<T>(hashKeyProp, keyValue));
+                }
+            }
+            else
+            {
+                using var client = new DynamoDBContext(new AmazonDynamoDBClient());
+                var keys = Document.FromJson(JsonSerializer.Serialize(keyValues)).ToAttributeUpdateMap(DynamoDBEntryConversion.V2, false);
+                foreach (var attributeUpdate in keys)
+                {
+                    var propName = attributeUpdate.Key;
+                    var prop = keyValues.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance);
+                    var propValue = prop.GetValue(keyValues);
+                    query = query.Where(ExpressionHelper.CreatePredicate<T>(prop, propValue));
+                }
+            }
+
+            var row = query.FirstOrDefault();
+            return row;
+        }
+
+        public ITransactWritePatchBuilder<T> Patch<T>(string tableName, T recordKey)
+        {
+            var table = GetTable<T>(tableName);
+            var row = Find(table, recordKey);
+            if (row is null)
+            {
+                row = JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(recordKey));
+            }
+            return new InMemoryTransactPatchBuilder<T>(this, table, row);
+        }
+
+        public ITransactWritePatchBuilder<T> Patch<T>(string tableName, DynamoDBValue hashKey)
+        {
+            var table = GetTable<T>(tableName);
+            var getRow = table.GetById(hashKey, CancellationToken.None);
+            Debug.Assert(getRow.IsCompleted);
+            var row = getRow.Result;
+            if (row is null)
+            {
+                row = Activator.CreateInstance<T>();
+                ExpressionHelper.GetHashKeyProperty<T>().SetValue(row, hashKey.Value);
+            }
+            return new InMemoryTransactPatchBuilder<T>(this, table, row);
+        }
+
+        public ITransactWritePatchBuilder<T> Patch<T>(string tableName, DynamoDBValue hashKey, DynamoDBValue rangeKey)
+        {
+            var table = GetTable<T>(tableName);
+            var getRow = table.GetById(hashKey, rangeKey, CancellationToken.None);
+            Debug.Assert(getRow.IsCompleted);
+            var row = getRow.Result;
+            if (row is null)
+            {
+                row = Activator.CreateInstance<T>();
+                ExpressionHelper.GetHashKeyProperty<T>().SetValue(row, hashKey.Value);
+                ExpressionHelper.GetRangeKeyProperty<T>().SetValue(row, rangeKey.Value);
+            }
+            return new InMemoryTransactPatchBuilder<T>(this, table, row);
+        }
+               
+
+        public ValueTask<bool> ExecuteAsync(CancellationToken cancellationToken)
+        {
+            if (Success)
+                repositoryFactory.tables = this.tables;
+            return new(Success);
+        }        
+    }
+
+    public class InMemoryTable<T>
+    {
+        protected readonly List<string> _rows;
         public IQueryable<T> Rows => this._rows.Select(row => JsonSerializer.Deserialize<T>(row)).AsQueryable();
 
-        public InMemoryRepository(List<string> rows)
+        public InMemoryTable(List<string> rows)
         {
             this._rows = rows ?? throw new ArgumentNullException(nameof(rows));
         }
@@ -206,6 +344,20 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
                 await DeleteAsync(row, cancellationToken);
         }
 
+        public void Dispose()
+        {
+            // NoOp
+            GC.SuppressFinalize(this);
+        }        
+    }
+
+    public class InMemoryRepository<T> : InMemoryTable<T>, IRepository<T>
+    {
+        public InMemoryRepository(List<string> rows)
+            : base(rows)
+        {
+        }
+
         public IBatchWriteBuilder<T> BatchWrite()
         {
             return new InMemoryBatchBuilder<T>(this);
@@ -221,12 +373,6 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
             return new InMemoryScanBuilder<T>(this.Rows.ToHashSet());
         }
 
-        public void Dispose()
-        {
-            // NoOp
-            GC.SuppressFinalize(this);
-        }
-
         public IPatchBuilder<T> Patch(DynamoDBValue hashKey)
         {
             var getRow = GetById(hashKey, CancellationToken.None);
@@ -234,7 +380,7 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
             var row = getRow.Result;
             if (row is null)
                 row = Activator.CreateInstance<T>();
-            return new InMemoryPatchBuilder<T>(this, row, hashKey, null);
+            return new InMemoryPatchBuilder<T>(this, row);
         }
 
         public IPatchBuilder<T> Patch(DynamoDBValue hashKey, DynamoDBValue rangeKey)
@@ -244,7 +390,7 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
             var row = getRow.Result;
             if (row is null)
                 row = Activator.CreateInstance<T>();
-            return new InMemoryPatchBuilder<T>(this, row, hashKey, rangeKey);
+            return new InMemoryPatchBuilder<T>(this, row);
         }
     }
 
@@ -443,72 +589,100 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
 
     }
 
-    public class InMemoryPatchBuilder<T> : IPatchBuilder<T>
+    public class InMemoryPatchBuilder<T> : InMemoryUpdateBuilder<T, IPatchBuilder<T>>, IPatchBuilder<T>
     {
-        private readonly InMemoryRepository<T> repo;
-        private bool conditionMet = true;
-        private T row;
-        private readonly DynamoDBValue hashKey;
-        private readonly DynamoDBValue? rangeKey;
-
-        public InMemoryPatchBuilder(InMemoryRepository<T> repo, T row, DynamoDBValue hashKey, DynamoDBValue? rangeKey)
+        public InMemoryPatchBuilder(InMemoryRepository<T> repo, T row) 
+            : base(repo, row)
         {
-            this.repo = repo ?? throw new ArgumentNullException(nameof(repo));
-            this.row = row;
-            this.hashKey = hashKey;
-            this.rangeKey = rangeKey;
         }
 
-        public IPatchBuilder<T> Add<R>(Expression<Func<T, IEnumerable<R>>> property, params R[] elements)
+        public async ValueTask<T> ExecuteAndGetAsync(CancellationToken cancellationToken)
+        {
+            if (ConditionMet)
+            {
+                await Table.SaveAsync(Row, cancellationToken);
+                return Row;
+            }
+            else
+                return default;
+        }
+    }
+
+    public class InMemoryTransactPatchBuilder<T> : InMemoryUpdateBuilder<T, ITransactWritePatchBuilder<T>>, ITransactWritePatchBuilder<T>
+    {
+        private readonly InMemoryTransactionBuilder transactionBuilder;
+
+        public InMemoryTransactPatchBuilder(InMemoryTransactionBuilder transactionBuilder, InMemoryTable<T> repo, T row) 
+            : base(repo, row)
+        {
+            this.transactionBuilder = transactionBuilder ?? throw new ArgumentNullException(nameof(transactionBuilder));
+        }
+
+        public ITransactWriteBuilder Build()
+        {
+            transactionBuilder.Success = transactionBuilder.Success && ConditionMet;
+            if (ConditionMet)
+                Table.SaveAsync(Row, default).GetAwaiter().GetResult();
+            return transactionBuilder;
+        }
+    }
+
+    public class InMemoryUpdateBuilder<T, TBuilder> : 
+        IUpdateExpressionBuilder<T, TBuilder> 
+        where TBuilder : IUpdateExpressionBuilder
+    {
+        protected readonly InMemoryTable<T> Table;
+        protected bool ConditionMet = true;
+        protected T Row;
+
+        public InMemoryUpdateBuilder(InMemoryTable<T> table, T row)
+        {
+            this.Table = table ?? throw new ArgumentNullException(nameof(table));
+            this.Row = row;
+        }
+
+        public TBuilder Add<R>(Expression<Func<T, IEnumerable<R>>> property, params R[] elements)
         {
             var prop = ExpressionHelper.GetPropertyInfo(property);
-            var collection = prop.GetValue(row) as ICollection<R>;
+            var collection = prop.GetValue(Row) as ICollection<R>;
             foreach (var item in elements)
                 collection.Add(item);
-            return this;
+            return (TBuilder)(IUpdateExpressionBuilder)this;
         }
 
-        public IPatchBuilder<T> Increment<R>(Expression<Func<T, R>> property, R incrementBy)
+        public TBuilder Increment<R>(Expression<Func<T, R>> property, R incrementBy)
         {
             var prop = ExpressionHelper.GetPropertyInfo(property);
-            dynamic value = prop.GetValue(row);
+            dynamic value = prop.GetValue(Row);
             value += incrementBy;
-            prop.SetValue(row, value);
-            return this;
+            prop.SetValue(Row, value);
+            return (TBuilder)(IUpdateExpressionBuilder)this;
         }
 
-        public IPatchBuilder<T> Decrement<R>(Expression<Func<T, R>> property, R incrementBy)
+        public TBuilder Decrement<R>(Expression<Func<T, R>> property, R incrementBy)
         {
             var prop = ExpressionHelper.GetPropertyInfo(property);
-            dynamic value = prop.GetValue(row);
+            dynamic value = prop.GetValue(Row);
             value -= incrementBy;
-            prop.SetValue(row, value);
-            return this;
+            prop.SetValue(Row, value);
+            return (TBuilder)(IUpdateExpressionBuilder)this;
         }
 
-        public IPatchBuilder<T> If<R>(Expression<Func<T, R>> property, PatchCondition condition, R value)
+        public TBuilder If<R>(Expression<Func<T, R>> property, PatchCondition condition, R value)
         {
-            if (!conditionMet)
-                return this;
+            if (!ConditionMet)
+                return (TBuilder)(IUpdateExpressionBuilder)this;
 
-            var query = repo.Rows;
-
-            var hashKeyPredicate = ExpressionHelper.CreateHashKeyPredicate<T>(hashKey);
-            query = query.Where(hashKeyPredicate);
-            if (rangeKey.HasValue)
-            {
-                var rangeKeyPredicate = ExpressionHelper.CreateRangeKeyKeyPredicate<T>(rangeKey.Value);
-                query = query.Where(rangeKeyPredicate);
-            }
+            var query = new[] { Row }.AsQueryable();
 
             var parameter = System.Linq.Expressions.Expression.Parameter(typeof(T), "x");
             var expr = ExpressionHelper.CreateScanExpression(parameter, property, ToScanOp(), new R[] { value });
             var predicateLambda = Expression.Lambda<Func<T, bool>>(expr, parameter);
             query = query.Where(predicateLambda);
 
-            this.conditionMet = query.Any();
+            this.ConditionMet = query.Any();
 
-            return this;
+            return (TBuilder)(IUpdateExpressionBuilder)this;
 
             ScanOperator ToScanOp()
             {
@@ -526,75 +700,49 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
             }
         }
 
-        public IPatchBuilder<T> IfContains<R>(Expression<Func<T, IEnumerable<R>>> property, R value)
-        {
-            var query = repo.Rows;
-
-            var hashKeyPredicate = ExpressionHelper.CreateHashKeyPredicate<T>(hashKey);
-            query = query.Where(hashKeyPredicate);
-            if (rangeKey.HasValue)
-            {
-                var rangeKeyPredicate = ExpressionHelper.CreateRangeKeyKeyPredicate<T>(rangeKey.Value);
-                query = query.Where(rangeKeyPredicate);
-            }
-
-            var row = query.SingleOrDefault();
-            if (row is null)
-            {
-                conditionMet = false;
-                return this;
-            }
-
-            var prop = ExpressionHelper.GetPropertyInfo(property);
-            var collection = prop.GetValue(row) as ICollection<R>;
-            conditionMet = collection.Contains(value);
-
-            return this;
-        }
-
-        public IPatchBuilder<T> Remove<R>(Expression<Func<T, R>> property)
+        public TBuilder IfContains<R>(Expression<Func<T, IEnumerable<R>>> property, R value)
         {
             var prop = ExpressionHelper.GetPropertyInfo(property);
-            prop.SetValue(row, default);
-            return this;
+            var collection = prop.GetValue(Row) as ICollection<R>;
+            ConditionMet = collection.Contains(value);
+
+            return (TBuilder)(IUpdateExpressionBuilder)this;
         }
 
-        public IPatchBuilder<T> Set<R>(Expression<Func<T, R>> property, R value)
+        public TBuilder Remove<R>(Expression<Func<T, R>> property)
         {
-            ExpressionHelper.GetPropertyInfo(property).SetValue(row, value);
-            return this;
+            var prop = ExpressionHelper.GetPropertyInfo(property);
+            prop.SetValue(Row, default);
+            return (TBuilder)(IUpdateExpressionBuilder)this;
         }
 
-        public IPatchBuilder<T> With<R>(R value)
+        public TBuilder Set<R>(Expression<Func<T, R>> property, R value)
         {
-            var originalValues = JsonSerializer.Serialize(row);
+            ExpressionHelper.GetPropertyInfo(property).SetValue(Row, value);
+            return (TBuilder)(IUpdateExpressionBuilder)this;
+        }
+
+        public TBuilder With<R>(R value)
+        {
+            var originalValues = JsonSerializer.Serialize(Row);
             var newValues = JsonSerializer.Serialize(value);
             var merged = JsonHelper.Merge(originalValues, newValues);
-            this.row = JsonSerializer.Deserialize<T>(merged);
-            return this;
+            this.Row = JsonSerializer.Deserialize<T>(merged);
+            return (TBuilder)(IUpdateExpressionBuilder)this;
         }
 
         public async ValueTask<bool> ExecuteAsync(CancellationToken cancellationToken)
         {
-            if (conditionMet)
+            if (ConditionMet)
             {
-                await repo.SaveAsync(row, cancellationToken);
+                await Table.SaveAsync(Row, cancellationToken);
                 return true;
             }
             else
                 return false;
         }
 
-        public async ValueTask<T> ExecuteAndGetAsync(CancellationToken cancellationToken)
-        {
-            if (conditionMet)
-            {
-                await repo.SaveAsync(row, cancellationToken);
-                return row;
-            }
-            else
-                return default;
-        }
+        
 
         /// <summary>
         /// In case of collection checking items count, in case of string string length
@@ -605,41 +753,31 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
         /// <param name="value"></param>
         /// <returns></returns>
         /// <exception cref="InvalidOperationException"></exception>
-        public IPatchBuilder<T> IfSize<R>(Expression<Func<T, R>> property, PatchCondition condition, int value)
+        public TBuilder IfSize<R>(Expression<Func<T, R>> property, PatchCondition condition, int value)
         {
-            if (!conditionMet)
-                return this;
-
-            var query = repo.Rows;
-
-            var hashKeyPredicate = ExpressionHelper.CreateHashKeyPredicate<T>(hashKey);
-            query = query.Where(hashKeyPredicate);
-            if (rangeKey.HasValue)
-            {
-                var rangeKeyPredicate = ExpressionHelper.CreateRangeKeyKeyPredicate<T>(rangeKey.Value);
-                query = query.Where(rangeKeyPredicate);
-            }
+            if (!ConditionMet)
+                return (TBuilder)(IUpdateExpressionBuilder)this;
 
             var prop = ExpressionHelper.GetPropertyInfo(property);
-            var propValue = prop.GetValue(row);
-            if(propValue != null)
+            var propValue = prop.GetValue(Row);
+            if (propValue != null)
             {
                 if (propValue.GetType().GetInterface(nameof(ICollection)) != null)
                 {
-                    conditionMet = IsConditionMet(((IEnumerable)propValue).Cast<object>().Count(), value);
-                    return this;
+                    ConditionMet = IsConditionMet(((IEnumerable)propValue).Cast<object>().Count(), value);
+                    return (TBuilder)(IUpdateExpressionBuilder)this;
                 }
             }
 
-            var stringValue = prop.GetValue(row) as string;
+            var stringValue = prop.GetValue(Row) as string;
 
             if(stringValue != null)
             {
-                conditionMet = IsConditionMet(stringValue.Length, value);
-                return this;
+                ConditionMet = IsConditionMet(stringValue.Length, value);
+                return (TBuilder)(IUpdateExpressionBuilder)this;
             }
 
-            return this;
+            return (TBuilder)(IUpdateExpressionBuilder)this;
 
             bool IsConditionMet(int sourceValue, int value)
             {

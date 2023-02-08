@@ -136,56 +136,6 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
             }
         }
 
-        private static readonly ConcurrentDictionary<Type, Func<object, Dictionary<string, AttributeValue>>> mapKeyCache = new();
-
-        private Func<object, Dictionary<string, AttributeValue>> GetKeyMapLambda<T>()
-        {
-            return mapKeyCache.GetOrAdd(typeof(T), t => CreateKeyMapLambda<T>());
-        }
-
-        private Func<object, Dictionary<string, AttributeValue>> CreateKeyMapLambda<T>()
-        {
-            var keyProp = ExpressionHelper.TryGetHashKeyProperty<T>();
-            var rangeProp = ExpressionHelper.TryGetRangeKeyProperty<T>();
-            var keyPropName = keyProp != null ? ExpressionHelper.GetDynamoDBPropertyName(keyProp) : null;
-            var rangePropName = rangeProp != null ? ExpressionHelper.GetDynamoDBPropertyName(rangeProp) : null;
-
-            if (keyProp != null && rangeProp != null)
-            {
-                return obj => MapHashAndRangeKey(obj, keyProp, keyPropName!, rangeProp, rangePropName!);
-            }
-            else if (keyProp != null)
-            {
-                return obj => MapHashKey(obj, keyProp, keyPropName!);
-            }
-            else
-            {
-                return obj => context.ToDocument((T)obj).ToAttributeMap();
-            }
-        }
-
-        private static Dictionary<string, AttributeValue> MapHashAndRangeKey(object item,
-            PropertyInfo hashKeyProp, string hashKeyAttributeName,
-            PropertyInfo rangeKeyProp, string rangeKeyAttributeName)
-        {
-            return new()
-            {
-                [hashKeyAttributeName] = AttributeHelper.ToAttributeValue(hashKeyProp.GetValue(item), hashKeyProp),
-                [rangeKeyAttributeName] = AttributeHelper.ToAttributeValue(rangeKeyProp.GetValue(item), rangeKeyProp)
-            };
-        }
-
-        private static Dictionary<string, AttributeValue> MapHashKey(object item,
-            PropertyInfo hashKeyProp, string hashKeyAttributeName)
-        {
-            return new()
-            {
-                [hashKeyAttributeName] = AttributeHelper.ToAttributeValue(hashKeyProp.GetValue(item), hashKeyProp)
-            };
-        }
-
-        private Dictionary<string, AttributeValue> MapKey<T>(T item) => GetKeyMapLambda<T>()(item!);
-
         public ITransactWriteBuilder Save<T>(string tableName, params T[] items)
         {
             ThrowIfDisposed();
@@ -209,7 +159,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         {
             ThrowIfDisposed();
 
-            var key = MapKey(recordKey);
+            var key = KeyHelpers.MapKey(context, recordKey);
             return new TransactWritePatchBuilder<T>(this, tableName, key);
         }
 
@@ -280,7 +230,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
                     Delete = new()
                     {
                         TableName = tableName,
-                        Key = MapKey(item)
+                        Key = KeyHelpers.MapKey(context, item)
                     }
                 });
             }

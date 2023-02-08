@@ -229,6 +229,16 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
             return propQuery.Single();
         }
 
+        public static object? GetPropertyValue(string propertyName, object instance)
+        {
+            var prop = instance
+                .GetType()
+                .GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+            if (prop == null)
+                throw new InvalidOperationException($"Property {propertyName} doesn't exist on type {instance.GetType().Name}");
+            return prop.GetValue(instance);
+        }
+
         public static Expression<Func<T, bool>> CreateHashKeyPredicate<T>(DynamoDBValue value)
             => CreatePredicate<T>(GetHashKeyProperty<T>(), value.ToObject());
 
