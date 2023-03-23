@@ -64,7 +64,7 @@ namespace CloudMesh.DataBlocks
 
     internal static class ExpressionBasedParser
     {
-        private static readonly ConcurrentDictionary<ConstructorInfo, string[]> paramNameDictionary = new ConcurrentDictionary<ConstructorInfo, string[]>();
+        private static readonly ConcurrentDictionary<ConstructorInfo, string[]> paramNameDictionary = new();
         private static readonly Type _objectType = typeof(object);
 
         private static readonly Type _multicastDelegateType =
@@ -83,14 +83,15 @@ namespace CloudMesh.DataBlocks
         /// <summary>
         /// Parses the arguments for the method call contained in the expression.
         /// </summary>
-        private static object[] ParseCallArgs(int argCount,
-            ReadOnlyCollection<Expression> argProv)
+        private static object[] ParseCallArgs(
+            int argCount,
+            IReadOnlyList<Expression> argProv)
         {
 #pragma warning disable CS8604 // Possible null reference argument.
 #pragma warning disable CS8601 // Possible null reference assignment.
 
-            object[] _jobArgs = new object[argCount];
-            for (int i = 0; i < argCount; i++)
+            var _jobArgs = new object[argCount];
+            for (var i = 0; i < argCount; i++)
             {
                 var theArg = argProv[i];
 

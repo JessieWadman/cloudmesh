@@ -1,5 +1,4 @@
 ﻿using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace System
 {
@@ -10,7 +9,7 @@ namespace System
         public static readonly DecimalSeparators ISO = new(' ', '.');
     }
 
-    public static class OptimizationHelpers
+    public static partial class OptimizationHelpers
     {
         private const int MaxDecimalLength = 29 + 1 + 29 + 9; // 29 integral digits, decimal separator, 28-29 decimal digits and 9 group separators
 

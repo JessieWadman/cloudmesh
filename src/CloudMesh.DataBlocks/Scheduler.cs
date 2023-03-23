@@ -43,12 +43,12 @@
 
         public static ICancelable ScheduleTellRepeatedly(ICanSubmit target, TimeSpan frequency, object message, IDataBlockRef sender)
         {
-            var cancelation = new Cancelable();
-            var stoppingToken = cancelation.Token;
+            var cancellation = new Cancelable();
+            var stoppingToken = cancellation.Token;
 
             _ = Task.Run(async () =>
             {
-                using (cancelation)
+                using (cancellation)
                 {
                     try
                     {
@@ -65,7 +65,7 @@
                 }
             }).ConfigureAwait(false);
 
-            return cancelation;
+            return cancellation;
         }
 
         public class Cancelable : ICancelable, IDisposable

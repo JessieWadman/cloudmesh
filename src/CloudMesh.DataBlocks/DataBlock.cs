@@ -97,7 +97,7 @@ namespace CloudMesh.DataBlocks
 #pragma warning restore CS8618 // Non-nullable field must contain a non-null value when exiting constructor. Consider declaring as nullable.
         {
             inbox = mailbox;
-            completion = Task.Run(() => RunAsync());
+            completion = Task.Run(RunAsync);
         }
 
         public DataBlock(IDataBlock inbox)
@@ -109,7 +109,9 @@ namespace CloudMesh.DataBlocks
         {
             get
             {
+                // Create snapshot of children
                 var result = children.ToArray();
+                // Return as IEnumerable
                 return result;
             }
         }
@@ -195,7 +197,7 @@ namespace CloudMesh.DataBlocks
         protected virtual ValueTask BeforeStart() => TaskHelper.CompletedTask;
         protected virtual ValueTask AfterStop() => TaskHelper.CompletedTask;
 
-        protected void SetIdleTimeout(TimeSpan idleTimeout)
+        protected void SetIdleTimeout(TimeSpan? idleTimeout)
         {
             this.idleTimeout = idleTimeout;
         }
@@ -326,7 +328,7 @@ namespace CloudMesh.DataBlocks
 
         protected void Stop()
         {
-            _ = Task.Run(() => StopAsync()).ConfigureAwait(false);
+            _ = Task.Run(StopAsync).ConfigureAwait(false);
         }
 
         public bool TrySubmit(object message, IDataBlockRef? sender)
@@ -345,7 +347,7 @@ namespace CloudMesh.DataBlocks
             var envelope = new Envelope(message, sender);
             if (!inbox.Writer.TryWrite(envelope))
             {
-                Debug.WriteLine($"Backpresure detected in {Path}");
+                Debug.WriteLine($"Backpressure detected in {Path}");
                 try
                 {
                     BackpressureMonitor.OnBackpressureDetected?.Invoke(Path);
