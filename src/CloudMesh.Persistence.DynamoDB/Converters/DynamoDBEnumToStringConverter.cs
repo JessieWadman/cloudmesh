@@ -1,146 +1,51 @@
 ﻿using Amazon.DynamoDBv2.DataModel;
 using Amazon.DynamoDBv2.DocumentModel;
 
-namespace CloudMesh.Persistence.DynamoDB.Converters
+namespace CloudMesh.Persistence.DynamoDB.Converters;
+
+public class DynamoDBEnumToStringConverter<TEnum> : IPropertyConverter
 {
-    public class DynamoDBEnumToStringConverter<TEnum> : IPropertyConverter
+    public object FromEntry(DynamoDBEntry entry)
     {
-        public object FromEntry(DynamoDBEntry entry)
+        if (entry is DynamoDBNull)
+            return default(TEnum);
+        var asString = entry.AsString();
+        if (int.TryParse(asString, out var intValue))
         {
-            if (entry is DynamoDBNull)
-                return default(TEnum);
-            var asString = entry.AsString();
-            if (int.TryParse(asString, out var intValue))
+            foreach (var value in Enum.GetValues(typeof(TEnum)))
             {
-                foreach (var value in Enum.GetValues(typeof(TEnum)))
-                {
-                    if ((int)value == intValue)
-                        return value;
-                }
+                if ((int)value == intValue)
+                    return value;
             }
-            return (TEnum)Enum.Parse(typeof(TEnum), entry.AsString(), true);
         }
-
-        public DynamoDBEntry ToEntry(object value)
+            
+        if (Enum.TryParse(typeof(TEnum), entry.AsString(), true, out var result))
         {
-            if (value is null)
-                return DynamoDBNull.Null;
-            return new Primitive(value.ToString());
-        }
-    }
-
-    public class DynamoDBTransitiveNullableEnumConverter<TEnum> : IPropertyConverter
-    {
-        public object FromEntry(DynamoDBEntry entry)
-        {
-            if (entry is DynamoDBNull)
-            {
-                return null;
-            }
-
-            if (!Enum.TryParse(typeof(TEnum), entry.AsString(), true, out var result))
-            {
-                result = entry.AsInt(); // Transition from int values
-            }
-
             return result;
         }
 
-        public DynamoDBEntry ToEntry(object value)
-        {
-            if (value == null)
-            {
-                return DynamoDBNull.Null;
-            }
-
-            return new Primitive(value.ToString());
-        }
+        return default(TEnum);
     }
 
-    public class DynamoDBNullableIntConverter : IPropertyConverter
+    public DynamoDBEntry ToEntry(object value)
     {
-        public object FromEntry(DynamoDBEntry entry)
-        {
-            int? nullableInt;
-
-            if (entry is DynamoDBNull || entry.AsString() == "null")
-            {
-                nullableInt = null;
-            }
-            else
-            {
-                nullableInt = entry.AsInt();
-            }
-
-            return nullableInt;
-        }
-
-        public DynamoDBEntry ToEntry(object value)
-        {
-            if (value == null)
-            {
-                return DynamoDBNull.Null;
-            }
-
-            return Convert.ToInt32(value);
-        }
+        if (value is null)
+            return DynamoDBNull.Null;
+        return new Primitive(value.ToString());
     }
-
-    public class DynamoDBZeroAsNullIntConverter : IPropertyConverter
+}
+    
+/// <summary>
+/// Stores an Enum as a string in DymamoDB
+/// </summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, Inherited = true, AllowMultiple = false)]
+public class DynamoDBEnumAsStringAttribute : DynamoDBPropertyAttribute
+{
+    private static Type GetConverterForEnumType(Type enumType)
     {
-        public object FromEntry(DynamoDBEntry entry)
-        {
-            int? nullableInt;
-
-            if (entry is DynamoDBNull || entry.AsInt() == 0)
-            {
-                nullableInt = null;
-            }
-            else
-            {
-                nullableInt = entry.AsInt();
-            }
-
-            return nullableInt;
-        }
-
-        public DynamoDBEntry ToEntry(object value)
-        {
-            if ((int)value == 0)
-            {
-                return DynamoDBNull.Null;
-            }
-
-            return Convert.ToInt32(value);
-        }
+        return typeof(DynamoDBEnumToStringConverter<>).MakeGenericType(enumType);
     }
 
-    public class DynamoDBTimeOnlyToStringConverter : IPropertyConverter
-    {
-        public object FromEntry(DynamoDBEntry entry)
-        {
-            TimeOnly timeOnly;
-
-            if (entry is DynamoDBNull)
-            {
-                timeOnly = default;
-            }
-            else
-            {
-                timeOnly = TimeOnly.Parse(entry.AsString());
-            }
-
-            return timeOnly;
-        }
-
-        public DynamoDBEntry ToEntry(object value)
-        {
-            if (TimeOnly.Parse(value.ToString()) == default)
-            {
-                return DynamoDBNull.Null;
-            }
-
-            return new Primitive(value.ToString());
-        }
-    }
+    public DynamoDBEnumAsStringAttribute(Type enumType) : base(GetConverterForEnumType(enumType)) { }
+    public DynamoDBEnumAsStringAttribute(string attributeName, Type enumType) : base(attributeName, GetConverterForEnumType(enumType)) { }
 }
