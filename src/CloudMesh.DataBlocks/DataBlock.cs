@@ -55,8 +55,11 @@ namespace CloudMesh.DataBlocks
         private readonly HashSet<IDataBlock> children = new();
         private readonly Dictionary<Type, Func<object, ValueTask<bool>>> handlers = new();
         private readonly Task completion;
+        private readonly CancellationTokenSource stoppingTokenSource = new();
+        protected CancellationToken StoppingToken => stoppingTokenSource.Token;
         private bool completed;
-        private bool stopping;
+        protected bool Stopping { get; private set; }
+        
         private TimeSpan? idleTimeout;
 
         public string Name { get; private set; }
@@ -142,7 +145,7 @@ namespace CloudMesh.DataBlocks
                 return ChildOf(newExpression, name);
 
             var child = (DataBlock)dataBlock!;
-            if (!child.stopping)
+            if (!child.Stopping)
                 return child;
 
             if (!child.completed)
@@ -267,8 +270,15 @@ namespace CloudMesh.DataBlocks
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             bool TryGetHandler(Type messageType, out Func<object, ValueTask<bool>>? handler)
             {
-                if (handlers.TryGetValue(messageType, out handler))
-                    return true;
+                var arr = handlers.ToArray().AsSpan();
+                foreach (var temp in arr)
+                {
+                    if (temp.Key.IsAssignableFrom(messageType))
+                    {
+                        handler = temp.Value;
+                        return true;
+                    }
+                }
 
                 if (hasAnyHandler)
                 {
@@ -276,6 +286,7 @@ namespace CloudMesh.DataBlocks
                     return true;
                 }
 
+                handler = null;
                 return false;
             }
         }
@@ -295,7 +306,7 @@ namespace CloudMesh.DataBlocks
 
         public async ValueTask StopAsync()
         {
-            stopping = true;
+            Stopping = true;
             using var _ = await stopLocker.LockAsync();
             if (completed)
                 return;
