@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Globalization;
+using System.Runtime.CompilerServices;
 
 namespace System
 {
@@ -13,8 +14,7 @@ namespace System
     {
         private const int MaxDecimalLength = 29 + 1 + 29 + 9; // 29 integral digits, decimal separator, 28-29 decimal digits and 9 group separators
 
-        private static int[] powof10 = new int[10]
-        {
+        private static readonly int[] PowerOf10 = {
             1,
             10,
             100,
@@ -28,7 +28,7 @@ namespace System
         };
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool FastTryParseDecimal(ReadOnlySpan<char> value, DecimalSeparators separators, out decimal parsedValue)
+        public static unsafe bool FastTryParseDecimal(ReadOnlySpan<char> value, DecimalSeparators separators, out decimal parsedValue)
         {
             var sourceLength = value.Length;
             if (sourceLength == 0)
@@ -43,27 +43,22 @@ namespace System
                 return false;
             }
 
+            // FastTryParseDecimalImpl handles EN_US, if we're using some other decimal/thousand separators,
+            // we first trim and convert it to EN_US, then parse it.
             if (separators.DecimalSeparator != '.' || separators.ThousandSeparator != ' ')
-                value = UnsafeTrimAndConvertToInvariant(value, separators.ThousandSeparator, separators.DecimalSeparator, sourceLength);
-            sourceLength = value.Length;
-
-            return FastTryParseDecimalImpl(value, sourceLength, out parsedValue);
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            static unsafe string UnsafeTrimAndConvertToInvariant(ReadOnlySpan<char> source, char thousandSeparator, char decimalSeparator, int sourceLength)
             {
-                fixed (char* sourceStart = source)
+                fixed (char* sourceStart = value)
                 {
                     var outputBufferPtr = stackalloc char[sourceLength + 1];
                     var currentSourcePtr = sourceStart;
                     var currentOutputBufferPtr = outputBufferPtr;
 
-                    for (int i = 0; i < sourceLength; i++, currentSourcePtr++)
+                    for (var i = 0; i < sourceLength; i++, currentSourcePtr++)
                     {
-                        if (*currentSourcePtr == thousandSeparator || *currentSourcePtr == ' ')
+                        if (*currentSourcePtr == separators.ThousandSeparator || *currentSourcePtr == ' ')
                             continue;
 
-                        if (*currentSourcePtr == decimalSeparator)
+                        if (*currentSourcePtr == separators.DecimalSeparator)
                         {
                             *currentOutputBufferPtr = '.';
                             currentOutputBufferPtr++;
@@ -77,11 +72,19 @@ namespace System
 
                     var remainderLength = (int)(currentOutputBufferPtr - outputBufferPtr);
                     if (remainderLength == 0)
-                        return string.Empty;
-                    var remainder = new string(outputBufferPtr, 0, remainderLength);
-                    return remainder;
+                    {
+                        parsedValue = 0;
+                        return false;
+                    }
+
+                    var remainder = new ReadOnlySpan<char>(outputBufferPtr, remainderLength);
+                    return FastTryParseDecimalImpl(remainder, remainderLength, out parsedValue);
                 }
             }
+
+            sourceLength = value.Length;
+
+            return FastTryParseDecimalImpl(value, sourceLength, out parsedValue);
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             static bool FastTryParseDecimalImpl(ReadOnlySpan<char> source, int sourceLength, out decimal result)
@@ -171,13 +174,41 @@ namespace System
                             }
                         }
                         var decimalPosition = (byte)(sourceLength - decpos);
-                        result = new decimal((int)n, (int)(n >> 32), 0, negative, decimalPosition) * powof10[sourceLength - (!secondhalfdec ? 19 : 20)] + new decimal(n2, 0, 0, negative, decimalPosition);
+                        result = new decimal((int)n, (int)(n >> 32), 0, negative, decimalPosition) * PowerOf10[sourceLength - (!secondhalfdec ? 19 : 20)] + new decimal(n2, 0, 0, negative, decimalPosition);
                         return true;
                     }
                 }
                 result = 0;
                 return false;
             }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool FastTryParseDecimal(ReadOnlySpan<char> value, out decimal parsedValue)
+            => FastTryParseDecimal(value, DecimalSeparators.ISO, out parsedValue);
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool FastTryParseDecimal(ReadOnlySpan<char> value, CultureInfo culture, out decimal parsedValue)
+        {
+            if (culture.Equals(CultureInfo.InvariantCulture))
+                return FastTryParseDecimal(value, out parsedValue);
+            
+            var thousandSeparator = culture.NumberFormat.NumberGroupSeparator.Length switch
+            {
+                0 => '\x255',
+                _ => culture.NumberFormat.NumberGroupSeparator[0]
+            };
+
+            var decimalSeparator = culture.NumberFormat.NumberDecimalSeparator.Length switch
+            {
+                0 => '\x254',
+                _ => culture.NumberFormat.NumberDecimalSeparator[0]
+            };
+            
+            return FastTryParseDecimal(
+                value,
+                new DecimalSeparators(thousandSeparator, decimalSeparator), 
+                out parsedValue);
         }
     }
 }

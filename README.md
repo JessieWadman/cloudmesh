@@ -4,12 +4,12 @@ Reusable dotnet building blocks for cloud solutions.
 ## Core
 Some common utilities and optimization helpers.
 
-| Class             | Description                                                                      |         
-|-------------------|----------------------------------------------------------------------------------|
-| Throttler         | Easy implementation of throttling within your code.                              |
-| AsyncLazy         | Same as standard Lazy<T> but async initialization.                               |
-| AsyncLock         | Async/awaitable lock, same as Semaphore, but for use in async code.              |        
-| FastDecimalParser | Very fast decimal parsing of strings. Must faster than build-int decimal.Parse() |
+| Class             | Description                                                                         |         
+|-------------------|-------------------------------------------------------------------------------------|
+| Throttler         | Easy implementation of throttling within your code.                                 |
+| AsyncLazy         | Same as standard Lazy<T> but async initialization.                                  |
+| AsyncLock         | Async/awaitable lock, same as Semaphore, but for use in async code.                 |        
+| FastDecimalParser | Very fast decimal parsing of strings. Much faster than the built-in decimal.Parse() |
  
  
 ## Data Blocks

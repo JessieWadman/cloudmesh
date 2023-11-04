@@ -33,18 +33,18 @@ public class FastDecimalParserTests
 
     public class FastDecimalBenchmarks
     {
-        const string decimalString = "123490123456.1235412";
+        private const string DecimalString = "123490123456.1235412";
         
         [Benchmark]
         public void FastDecimalParsing()
         {
-            OptimizationHelpers.FastTryParseDecimal(decimalString, DecimalSeparators.ISO, out var parsedValue);
+            OptimizationHelpers.FastTryParseDecimal(DecimalString, DecimalSeparators.ISO, out var parsedValue);
         }
         
         [Benchmark]
         public void DefaultDecimalParsing()
         {
-            decimal.TryParse(decimalString, CultureInfo.InvariantCulture, out var parsedValue);
+            decimal.TryParse(DecimalString, CultureInfo.InvariantCulture, out var parsedValue);
         }
     }
 }
