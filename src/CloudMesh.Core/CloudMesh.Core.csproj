@@ -10,6 +10,7 @@
 		<Product>CloudMesh</Product>
 		<Description>Useful optimized utility classes and helpers</Description>
 		<Copyright>MIT</Copyright>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
 		<RootNamespace>CloudMesh</RootNamespace>

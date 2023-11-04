@@ -10,6 +10,7 @@
 		<Product>CloudMesh</Product>
 		<Description>Lightweight repository pattern for AWS DynamoDB</Description>
 		<Copyright>MIT</Copyright>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
 		<TargetFrameworks>net6.0;net8.0</TargetFrameworks>

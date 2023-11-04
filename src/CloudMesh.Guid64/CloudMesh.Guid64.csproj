@@ -10,6 +10,7 @@
         <Product>CloudMesh</Product>
         <Description>Roughly time-sortable 64 bit Guid based on Twitter's Snowflake algorithm</Description>
         <Copyright>MIT</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
         <RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
         <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>

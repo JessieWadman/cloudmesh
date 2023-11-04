@@ -11,6 +11,7 @@
         <Product>CloudMesh</Product>
         <Description>Fast and efficient MurmurHash implementations based on code from Akka.net project</Description>
         <Copyright>MIT</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
         <RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
     </PropertyGroup>

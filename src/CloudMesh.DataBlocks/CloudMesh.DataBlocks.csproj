@@ -11,6 +11,7 @@
 		<Product>CloudMesh</Product>
 		<Description>Lightweight building blocks for creating complex message processing pipelines</Description>
 		<Copyright>MIT</Copyright>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
 		<PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
 		<RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
 	</PropertyGroup>

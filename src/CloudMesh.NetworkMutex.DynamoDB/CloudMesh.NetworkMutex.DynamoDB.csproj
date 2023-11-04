@@ -10,6 +10,7 @@
         <Product>CloudMesh</Product>
         <Description>Network-wide mutexes, using a postgres database. Allows processes across the network/cluster to acquire arbitrary, exclusive locks</Description>
         <Copyright>MIT</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
         <RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
     </PropertyGroup>
