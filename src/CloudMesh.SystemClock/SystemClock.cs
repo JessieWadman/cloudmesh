@@ -1,14 +1,12 @@
 ﻿namespace CloudMesh.Utils
 {
-    // This is used in place of DateTimeOffset.Now and so on throughout the solution, so that
-    // we can control the current date and time in unit tests.
-    // This is important if we have static files that we simulate import of where timestamps
-    // are old. It allows us to rewind the clock to the point in time when the file
-    // was current.
-    // It also allows us to fast-forward time from effective dates to termination dates
-    // and so on, as part of the unit tests.
-
-    // The default implementation just pipes it onwards to DateTimeOffset.Now    
+    /// <summary>
+    /// Inversion of control for system clock, so that unit tests can use predictable, or well-known points in time.
+    /// In dotnet 8, this functionality is instead provided by the built-in TimeProvider class.
+    /// </summary>
+    /// <remarks>
+    /// The default implementation just pipes it onwards to DateTimeOffset.Now.
+    /// </remarks>    
 #if (NET8_0_OR_GREATER)
     [Obsolete("Use .NET built-in TimeProvider instead")]
 #endif

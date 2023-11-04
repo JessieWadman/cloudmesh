@@ -48,6 +48,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.NetworkMutex.Post
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.NetworkMutex.DynamoDB", "src\CloudMesh.NetworkMutex.DynamoDB\CloudMesh.NetworkMutex.DynamoDB.csproj", "{CC08E450-E627-4539-B60D-AD0C923D06B2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Guid64Sample", "samples\Guid64Sample\Guid64Sample.csproj", "{E5FFE12F-4239-48DA-835E-BA777A221B37}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DatablocksSample", "samples\DatablocksSample\DatablocksSample.csproj", "{E73E1622-1A78-42D8-B11B-9689F4A9D826}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -106,6 +110,14 @@ Global
 		{CC08E450-E627-4539-B60D-AD0C923D06B2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CC08E450-E627-4539-B60D-AD0C923D06B2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CC08E450-E627-4539-B60D-AD0C923D06B2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E5FFE12F-4239-48DA-835E-BA777A221B37}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E5FFE12F-4239-48DA-835E-BA777A221B37}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E5FFE12F-4239-48DA-835E-BA777A221B37}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E5FFE12F-4239-48DA-835E-BA777A221B37}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E73E1622-1A78-42D8-B11B-9689F4A9D826}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E73E1622-1A78-42D8-B11B-9689F4A9D826}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E73E1622-1A78-42D8-B11B-9689F4A9D826}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E73E1622-1A78-42D8-B11B-9689F4A9D826}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -125,6 +137,8 @@ Global
 		{E6CCC662-C669-42F2-9556-86DD9553593A} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
 		{A5659A1D-8E74-4F05-83D5-EB2A77464DF6} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
 		{CC08E450-E627-4539-B60D-AD0C923D06B2} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
+		{E5FFE12F-4239-48DA-835E-BA777A221B37} = {9687377C-3528-4E84-A6A4-96B21F36CEC2}
+		{E73E1622-1A78-42D8-B11B-9689F4A9D826} = {9687377C-3528-4E84-A6A4-96B21F36CEC2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1B0642CC-1BC5-42D7-9CE3-87B1D1080B36}
