@@ -55,8 +55,8 @@ namespace System
                 fixed (char* sourceStart = source)
                 {
                     var outputBufferPtr = stackalloc char[sourceLength + 1];
-                    char* currentSourcePtr = sourceStart;
-                    char* currentOutputBufferPtr = outputBufferPtr;
+                    var currentSourcePtr = sourceStart;
+                    var currentOutputBufferPtr = outputBufferPtr;
 
                     for (int i = 0; i < sourceLength; i++, currentSourcePtr++)
                     {
@@ -88,9 +88,9 @@ namespace System
             {
                 if (sourceLength != 0)
                 {
-                    bool negative = false;
+                    var negative = false;
                     long n = 0;
-                    int start = 0;
+                    var start = 0;
                     if (source[0] == '-')
                     {
                         negative = true;
@@ -99,26 +99,24 @@ namespace System
 
                     if (sourceLength <= 19)
                     {
-                        int decpos = sourceLength;
-                        for (int k = start; k < sourceLength; k++)
+                        var decpos = sourceLength;
+                        for (var k = start; k < sourceLength; k++)
                         {
-                            char c = source[k];
-                            if (c == '.')
+                            var c = source[k];
+                            switch (c)
                             {
-                                decpos = k + 1;
-                            }
-                            else if (c == ' ')
-                            {
-                                continue;
-                            }
-                            else if (c < '0' || c > '9')
-                            {
-                                result = 0;
-                                return false;
-                            }
-                            else
-                            {
-                                n = (n * 10) + (int)(c - '0');
+                                case '.':
+                                    decpos = k + 1;
+                                    break;
+                                case ' ':
+                                    continue;
+                                case < '0':
+                                case > '9':
+                                    result = 0;
+                                    return false;
+                                default:
+                                    n = (n * 10) + (int)(c - '0');
+                                    break;
                             }
                         }
                         result = new decimal((int)n, (int)(n >> 32), 0, negative, (byte)(sourceLength - decpos));
@@ -130,53 +128,49 @@ namespace System
                         {
                             sourceLength = 28;
                         }
-                        int decpos = sourceLength;
-                        for (int k = start; k < 19; k++)
+                        var decpos = sourceLength;
+                        for (var k = start; k < 19; k++)
                         {
-                            char c = source[k];
-                            if (c == '.')
+                            var c = source[k];
+                            switch (c)
                             {
-                                decpos = k + 1;
-                            }
-                            else if (c == ' ')
-                            {
-                                continue;
-                            }
-                            else if (c < '0' || c > '9')
-                            {
-                                result = 0;
-                                return false;
-                            }
-                            else
-                            {
-                                n = (n * 10) + (int)(c - '0');
+                                case '.':
+                                    decpos = k + 1;
+                                    break;
+                                case ' ':
+                                    continue;
+                                case < '0':
+                                case > '9':
+                                    result = 0;
+                                    return false;
+                                default:
+                                    n = (n * 10) + (int)(c - '0');
+                                    break;
                             }
                         }
-                        int n2 = 0;
-                        bool secondhalfdec = false;
-                        for (int k = 19; k < sourceLength; k++)
+                        var n2 = 0;
+                        var secondhalfdec = false;
+                        for (var k = 19; k < sourceLength; k++)
                         {
-                            char c = source[k];
-                            if (c == '.')
+                            var c = source[k];
+                            switch (c)
                             {
-                                decpos = k + 1;
-                                secondhalfdec = true;
-                            }
-                            else if (c == ' ')
-                            {
-                                continue;
-                            }
-                            else if (c < '0' || c > '9')
-                            {
-                                result = 0;
-                                return false;
-                            }
-                            else
-                            {
-                                n2 = (n2 * 10) + (int)(c - '0');
+                                case '.':
+                                    decpos = k + 1;
+                                    secondhalfdec = true;
+                                    break;
+                                case ' ':
+                                    continue;
+                                case < '0':
+                                case > '9':
+                                    result = 0;
+                                    return false;
+                                default:
+                                    n2 = (n2 * 10) + (int)(c - '0');
+                                    break;
                             }
                         }
-                        byte decimalPosition = (byte)(sourceLength - decpos);
+                        var decimalPosition = (byte)(sourceLength - decpos);
                         result = new decimal((int)n, (int)(n >> 32), 0, negative, decimalPosition) * powof10[sourceLength - (!secondhalfdec ? 19 : 20)] + new decimal(n2, 0, 0, negative, decimalPosition);
                         return true;
                     }

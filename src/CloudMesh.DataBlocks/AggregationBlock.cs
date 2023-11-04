@@ -13,7 +13,7 @@ namespace CloudMesh.DataBlocks
             public static readonly Flush Instance = new();
         }
 
-        public AggregationDataBlock(TimeSpan flushFrequency, int bufferSize = 1)
+        protected AggregationDataBlock(TimeSpan flushFrequency, int bufferSize = 1)
             : base(bufferSize)
         {
             this.flushFrequency = flushFrequency;

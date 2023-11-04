@@ -2,8 +2,8 @@
 
 namespace CloudMesh.Utils
 {
-    // <summary>
-    /// Provides support for asynchronous lazy initialization. This type is fully threadsafe.
+    /// <summary>
+    /// Provides support for asynchronous lazy initialization. This type is fully thread safe.
     /// </summary>
     /// <typeparam name="T">The type of object that is being asynchronously initialized.</typeparam>
     public sealed class AsyncLazy<T>

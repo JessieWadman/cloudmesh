@@ -1,6 +1,10 @@
 ﻿using CloudMesh.Persistence.DynamoDB.Builders;
-using CloudMesh.Utils;
 using System.Linq.Expressions;
+
+#if (NET8_0_OR_GREATER)
+#else
+    using CloudMesh.Utils;
+#endif  
 
 namespace CloudMesh.Persistence.DynamoDB
 {
@@ -11,15 +15,30 @@ namespace CloudMesh.Persistence.DynamoDB
             DynamoDBValue hashKey, 
             DynamoDBValue? rangeKey,
             Expression<Func<T, long>> lockUntilProperty,
+#if (NET8_0_OR_GREATER)
+            TimeProvider timeProvider,
+#else
             ISystemClock systemClock,
+#endif         
+            
             TimeSpan lockDuration,
             CancellationToken cancellationToken)
         {
+#if (NET8_0_OR_GREATER)
+            var rightNow = timeProvider.GetUtcNow().ToUnixTimeMilliseconds();
+#else
             var rightNow = systemClock.UtcNowWithOffset.ToUnixTimeMilliseconds();
+#endif  
+                
             if (lockDuration == default)
                 lockDuration = TimeSpan.FromMinutes(5);
 
+#if (NET8_0_OR_GREATER)
+            var newLockWillExpireAt = timeProvider.GetUtcNow().Add(lockDuration).ToUnixTimeMilliseconds();
+#else
             var newLockWillExpireAt = systemClock.UtcNowWithOffset.Add(lockDuration).ToUnixTimeMilliseconds();
+#endif  
+            
 
             var patch = rangeKey is null 
                 ? repository.Patch(hashKey) 
@@ -40,19 +59,27 @@ namespace CloudMesh.Persistence.DynamoDB
             DynamoDBValue hashKey,
             DynamoDBValue rangeKey,
             Expression<Func<T, long>> lockUntilProperty,
-            ISystemClock systemClock,
+#if (NET8_0_OR_GREATER)
+            TimeProvider timeProvider,
+#else
+            ISystemClock timeProvider,
+#endif              
             TimeSpan lockDuration,
             CancellationToken cancellationToken)
-            => TryLockInternal(repository, hashKey, rangeKey, lockUntilProperty, systemClock, lockDuration, cancellationToken);
+            => TryLockInternal(repository, hashKey, rangeKey, lockUntilProperty, timeProvider, lockDuration, cancellationToken);
 
         public static ValueTask<(bool Success, T Item)> TryLock<T>(
             this IRepository<T> repository,
             DynamoDBValue hashKey,
             Expression<Func<T, long>> lockUntilProperty,
-            ISystemClock systemClock,
+#if (NET8_0_OR_GREATER)
+            TimeProvider timeProvider,
+#else
+            ISystemClock timeProvider,
+#endif   
             TimeSpan lockDuration,
             CancellationToken cancellationToken)
-            => TryLockInternal(repository, hashKey, null, lockUntilProperty, systemClock, lockDuration, cancellationToken);
+            => TryLockInternal(repository, hashKey, null, lockUntilProperty, timeProvider, lockDuration, cancellationToken);
             
     }
 }

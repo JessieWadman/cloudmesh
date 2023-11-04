@@ -4,15 +4,19 @@ namespace System
 {
     public static class AsyncExtensions
     {
-        public static async Task<T[]> ToArrayAsync<T>(this IAsyncEnumerable<T> enumerable)
+        public static async Task<List<T>> ToListAsync<T>(this IAsyncEnumerable<T> enumerable)
         {
             List<T> items = new();
             await foreach (var item in enumerable)
             {
                 items.Add(item);
             }
-            return items.ToArray();
+
+            return items;
         }
+        
+        public static async Task<T[]> ToArrayAsync<T>(this IAsyncEnumerable<T> enumerable)
+            => (await ToListAsync(enumerable)).ToArray();
 
         public static async IAsyncEnumerable<T> Take<T>(this IAsyncEnumerable<T> source, int count)
         {

@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-	  <TargetFramework>net6.0</TargetFramework>
 	  <ImplicitUsings>enable</ImplicitUsings>
 	  <Nullable>enable</Nullable>
 	  <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
@@ -13,6 +12,7 @@
 	  <Copyright>MIT</Copyright>
 	  <PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
 	  <RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
+	  <TargetFrameworks>net6.0;net8.0</TargetFrameworks>
   </PropertyGroup>
 
   <ItemGroup>

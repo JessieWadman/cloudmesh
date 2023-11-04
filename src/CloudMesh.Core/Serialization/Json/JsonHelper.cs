@@ -38,8 +38,8 @@ namespace CloudMesh.Serialization.Json
             using (var jDoc2 = JsonDocument.Parse(newContent))
             using (var jsonWriter = new Utf8JsonWriter(outputBuffer, new JsonWriterOptions { Indented = true }))
             {
-                JsonElement root1 = jDoc1.RootElement;
-                JsonElement root2 = jDoc2.RootElement;
+                var root1 = jDoc1.RootElement;
+                var root2 = jDoc2.RootElement;
 
                 if (root1.ValueKind != JsonValueKind.Array && root1.ValueKind != JsonValueKind.Object)
                 {
@@ -76,30 +76,30 @@ namespace CloudMesh.Serialization.Json
             // * Merge them, if the value kinds match (e.g. both are objects or arrays),
             // * Completely override the value of the first with the one from the second, if the value kind mismatches (e.g. one is object, while the other is an array or string),
             // * Or favor the value of the first (regardless of what it may be), if the second one is null (i.e. don't override the first).
-            foreach (JsonProperty property in root1.EnumerateObject())
+            foreach (var property in root1.EnumerateObject())
             {
-                string propertyName = property.Name;
+                var propertyName = property.Name;
 
                 JsonValueKind newValueKind;
 
-                if (root2.TryGetProperty(propertyName, out JsonElement newValue) && (newValueKind = newValue.ValueKind) != JsonValueKind.Null)
+                if (root2.TryGetProperty(propertyName, out var newValue) && (newValueKind = newValue.ValueKind) != JsonValueKind.Null)
                 {
                     jsonWriter.WritePropertyName(propertyName);
 
-                    JsonElement originalValue = property.Value;
-                    JsonValueKind originalValueKind = originalValue.ValueKind;
+                    var originalValue = property.Value;
+                    var originalValueKind = originalValue.ValueKind;
 
-                    if (newValueKind == JsonValueKind.Object && originalValueKind == JsonValueKind.Object)
+                    switch (newValueKind)
                     {
-                        MergeObjects(jsonWriter, originalValue, newValue); // Recursive call
-                    }
-                    else if (newValueKind == JsonValueKind.Array && originalValueKind == JsonValueKind.Array)
-                    {
-                        MergeArrays(jsonWriter, originalValue, newValue);
-                    }
-                    else
-                    {
-                        newValue.WriteTo(jsonWriter);
+                        case JsonValueKind.Object when originalValueKind == JsonValueKind.Object:
+                            MergeObjects(jsonWriter, originalValue, newValue); // Recursive call
+                            break;
+                        case JsonValueKind.Array when originalValueKind == JsonValueKind.Array:
+                            MergeArrays(jsonWriter, originalValue, newValue);
+                            break;
+                        default:
+                            newValue.WriteTo(jsonWriter);
+                            break;
                     }
                 }
                 else
@@ -109,7 +109,7 @@ namespace CloudMesh.Serialization.Json
             }
 
             // Write all the properties of the second document that are unique to it.
-            foreach (JsonProperty property in root2.EnumerateObject())
+            foreach (var property in root2.EnumerateObject())
             {
                 if (!root1.TryGetProperty(property.Name, out _))
                 {
@@ -128,11 +128,11 @@ namespace CloudMesh.Serialization.Json
             jsonWriter.WriteStartArray();
 
             // Write all the elements from both JSON arrays
-            foreach (JsonElement element in root1.EnumerateArray())
+            foreach (var element in root1.EnumerateArray())
             {
                 element.WriteTo(jsonWriter);
             }
-            foreach (JsonElement element in root2.EnumerateArray())
+            foreach (var element in root2.EnumerateArray())
             {
                 element.WriteTo(jsonWriter);
             }

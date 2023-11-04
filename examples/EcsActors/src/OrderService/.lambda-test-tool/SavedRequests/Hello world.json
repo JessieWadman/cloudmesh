@@ -1,5 +1,0 @@
-{
-  "$service": "IOrderPlacementService",
-  "$method": "PlaceOrder",
-  "comment": "Hello world!"
-}

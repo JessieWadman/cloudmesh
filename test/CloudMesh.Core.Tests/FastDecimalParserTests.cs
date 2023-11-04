@@ -16,7 +16,7 @@ public class FastDecimalParserTests
         _output = output;
     }
     
-    //[Fact]
+    // [Fact]
     public void Benchmark()
     {
         var logger = new AccumulationLogger();

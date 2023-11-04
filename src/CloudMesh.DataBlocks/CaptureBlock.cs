@@ -2,7 +2,7 @@
 {
     public class CaptureBlock : DataBlock
     {
-        private List<object> messages = new();
+        private readonly List<object> messages = new();
 
         public CaptureBlock()
             : base(1)

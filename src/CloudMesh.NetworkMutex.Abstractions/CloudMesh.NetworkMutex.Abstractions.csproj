@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TargetFrameworks>net7.0;net8.0</TargetFrameworks>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <Company>Open Source</Company>
+        <Authors>Jessie Wadman</Authors>
+        <Product>CloudMesh</Product>
+        <Description>Network-wide mutexes using various types of persistence storages for backing. Allows processes across the network/cluster to acquire arbitrary, exclusive locks</Description>
+        <Copyright>MIT</Copyright>
+        <PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
+    </PropertyGroup>
+
+</Project>
