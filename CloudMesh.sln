@@ -26,9 +26,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.DataBlocks", "src\CloudMesh.DataBlocks\CloudMesh.DataBlocks.csproj", "{7A617319-3F49-4E65-856C-F4E1537D1D37}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3B86E5C2-9A41-4EA6-B76C-8532069CE0B1}"
-	ProjectSection(SolutionItems) = preProject
-		Directory.Build.props = Directory.Build.props
-	EndProjectSection
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.DataBlocks.Tests", "test\CloudMesh.DataBlocks.Tests\CloudMesh.DataBlocks.Tests.csproj", "{27C7182C-0548-457E-87B3-C069ED3B70A3}"
 EndProject

@@ -52,11 +52,11 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
 
                 var table1 = repositoryFactory.For<TestRec>("test1");
                 var allRows = await table1.Scan().ToArrayAsync(default);
-                Assert.Equal(0, allRows.Length);
+                Assert.Empty(allRows);
 
                 var table2 = repositoryFactory.For<TestRec>("test2");
                 allRows = await table1.Scan().ToArrayAsync(default);
-                Assert.Equal(0, allRows.Length);
+                Assert.Empty(allRows);
             }
         }
     }
