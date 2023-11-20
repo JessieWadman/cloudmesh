@@ -1,40 +1,25 @@
 <Project>
-  <PropertyGroup>
-    <EFCoreVersion>8.0</EFCoreVersion>
-    <MicrosoftExtensionsVersion>8.0.0</MicrosoftExtensionsVersion>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <MicrosoftExtensionsVersion>8.0</MicrosoftExtensionsVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net7.0'">
+    <MicrosoftExtensionsVersion>7.0</MicrosoftExtensionsVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <MicrosoftExtensionsVersion>6.0</MicrosoftExtensionsVersion>
   </PropertyGroup>
   
   <ItemGroup>
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     
-    <!--<PackageReference Include="Microsoft.EntityFrameworkCore" Version="$(EFCoreVersion)" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="$(EFCoreVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
     
-    <PackageVersion Include="Microsoft.Data.SqlClient" Version="5.1.1" />-->
-    
+    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="3.7" />
+    <PackageVersion Include="Npgsql" Version="7.0.6" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <PackageVersion Include="System.IO.Hashing" Version="8.0" />
-    
-    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="8.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0" />
-    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="3.7" />
-    
-    <PackageVersion Include="Npgsql" Version="7.0.6" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0'">
-    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="7.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="7.0" />
-    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="3.7" />
-    <PackageVersion Include="Npgsql" Version="7.0.6" />
-  </ItemGroup>
-
-  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
-    <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="6.0" />
-    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0" />
-    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="3.7" />
-    <PackageVersion Include="Npgsql" Version="7.0.6" />
-  </ItemGroup>
+    <PackageVersion Include="System.IO.Hashing" Version="$(MicrosoftExtensionsVersion)" />        
+  </ItemGroup>  
 </Project>
