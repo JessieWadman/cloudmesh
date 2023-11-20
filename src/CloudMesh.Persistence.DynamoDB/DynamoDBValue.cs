@@ -13,7 +13,7 @@ namespace CloudMesh.Persistence.DynamoDB
 
     public readonly struct DynamoDBValue
     {
-        private readonly object Original { get; init; }
+        private readonly object? Original { get; init; }
         public object Value { get; init; }
         public DynamoDBValueType ValueType { get; init; }
         public static readonly DynamoDBValue Null = new() { Original = null, ValueType = DynamoDBValueType.Null };
@@ -56,11 +56,12 @@ namespace CloudMesh.Persistence.DynamoDB
                 DateOnly v => v,
                 DateTime v => v,
                 DateTimeOffset v => v,
-                _ => Convert.ToString(value, CultureInfo.InvariantCulture)
+                null => DynamoDBValue.Null,
+                _ => Convert.ToString(value, CultureInfo.InvariantCulture)!
             };
         }
 
-        public object ToObject() => Original;
+        public object? ToObject() => Original;
         public AttributeValue ToAttributeValue()
         {
             return ValueType switch

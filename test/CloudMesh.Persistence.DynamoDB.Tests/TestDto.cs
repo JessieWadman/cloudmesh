@@ -5,7 +5,7 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
 {
     public record IdOnly
     {
-        public string Id { get; init; }
+        public string? Id { get; init; }
     }
 
     public enum TestEnum
@@ -19,12 +19,12 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
     {
         [DynamoDBHashKey]
         [DynamoDBGlobalSecondaryIndexRangeKey("byParent")]
-        public string Id { get; set; }
+        public string? Id { get; set; }
 
         [DynamoDBGlobalSecondaryIndexHashKey("byParent")]
-        public string ParentId { get; set; }
+        public string? ParentId { get; set; }
 
-        public string Description { get; set; }
+        public string? Description { get; set; }
 
         [DynamoDBRangeKey(Converter = typeof(DynamoDBEnumToStringConverter<TestEnum>))]
         public TestEnum? Enum1 { get; set; }
@@ -35,11 +35,11 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
     public class TestSetDto
     {
         [DynamoDBHashKey]
-        public string Id { get; set; }
+        public string? Id { get; set; }
 
         public List<string> ParentIds { get; set; } = new();
 
-        public string Description { get; set; }
+        public string? Description { get; set; }
     }
 
     public enum TestEnumSortKey
@@ -53,12 +53,12 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
     public class TestEnumSortKeyDto
     {
         [DynamoDBHashKey]
-        public string Id { get; set; }
+        public string? Id { get; set; }
 
         [DynamoDBRangeKey(Converter = typeof(DynamoDBEnumToStringConverter<TestEnum>))]
         public TestEnumSortKey SortKey { get; set; }
 
-        public string Description { get; set; }
+        public string? Description { get; set; }
     }
 
     public class TestWithNumericalIDDto
@@ -70,6 +70,6 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
         [DynamoDBGlobalSecondaryIndexHashKey("byParent")]
         public int ParentId { get; set; }
 
-        public string Description { get; set; }
+        public string? Description { get; set; }
     }
 }

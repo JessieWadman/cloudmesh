@@ -18,7 +18,11 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
                 }
             };
 
-            var attribute = AttributeHelper.ToAttributeValue(entity.Test, entity.GetType().GetProperty(nameof(entity.Test)));
+            var prop = entity
+                .GetType()
+                .GetProperty(nameof(entity.Test))!;
+
+            var attribute = AttributeHelper.ToAttributeValue(entity.Test, prop);
             Assert.NotNull(attribute);
         }
     }

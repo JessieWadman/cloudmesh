@@ -10,29 +10,29 @@ namespace Persistence.DynamoDB.Tests
         public class Manager
         {
             [DynamoDBProperty(AttributeName = "DName")]
-            public string DisplayName { get; set; }
+            public string? DisplayName { get; set; }
         }
 
         public class Employment
         {
             [DynamoDBProperty(AttributeName = "Mgr")]
-            public Manager Manager { get; set; }
+            public Manager Manager { get; set; } = new();
         }
 
         public class Employee
         {
             [DynamoDBProperty(AttributeName = "Emps")]
-            public List<Employment> Employments { get; set; }
+            public List<Employment> Employments { get; set; } = new();
         }
 
 
         [Fact]
         public void DotNotationShouldWork()
         {
-            Expression<Func<Employee, string>> expr = e => e.Employments[0].Manager.DisplayName;
+            Expression<Func<Employee, string?>> expr = e => e.Employments[0].Manager.DisplayName;
             var (propertyPath, _) = ExpressionHelper.GetDotNotation(expr);
-            var dynamoDBExpression = ExpressionHelper.DotNotationToDynamoDBExpression<Employee>(propertyPath);
-            Assert.Equal("Emps[0].Mgr.DName", dynamoDBExpression);
+            var dynamoDbExpression = ExpressionHelper.DotNotationToDynamoDBExpression<Employee>(propertyPath);
+            Assert.Equal("Emps[0].Mgr.DName", dynamoDbExpression);
         }
 
         [Fact]

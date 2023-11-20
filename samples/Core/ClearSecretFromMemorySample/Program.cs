@@ -1,4 +1,5 @@
-﻿using CloudMesh.Utils;
+﻿using System.Text;
+using CloudMesh.Utils;
 
 // ALWAYS consider using SecureString, when possible.
 // Only ever use this approach if you're dealing with some external dependencies or situations where using SecureString

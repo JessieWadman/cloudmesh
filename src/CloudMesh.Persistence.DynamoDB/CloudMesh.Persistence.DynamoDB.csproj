@@ -5,20 +5,12 @@
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-		<Company>Open Source</Company>
-		<Authors>Jessie Wadman</Authors>
-		<Product>CloudMesh</Product>
 		<Description>Lightweight repository pattern for AWS DynamoDB</Description>
-		<Copyright>MIT</Copyright>
-		<PackageLicenseExpression>MIT</PackageLicenseExpression>
-		<PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
-		<RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
-		<TargetFrameworks>net6.0;net8.0</TargetFrameworks>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="AWSSDK.DynamoDBv2" Version="3.7.4" />
-		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.0" />
+		<PackageReference Include="AWSSDK.DynamoDBv2" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -27,7 +19,7 @@
 	  <ProjectReference Include="..\CloudMesh.MurmurHash\CloudMesh.MurmurHash.csproj" />	  
 	</ItemGroup>
 
-	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'net7.0'">
 		<ProjectReference Include="..\CloudMesh.SystemClock\CloudMesh.SystemClock.csproj" />
 	</ItemGroup>
 </Project>

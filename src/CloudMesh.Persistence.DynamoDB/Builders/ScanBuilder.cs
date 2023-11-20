@@ -11,18 +11,22 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
     [DebuggerDisplay("{ToString()}")]
     public class ScanFilter
     {
+        public ScanFilter(string property, ScanOperator scanOperator, object[] values)
+        {
+            Property = property;
+            Operator = scanOperator;
+            Values = values;
+        }
+        
         public string Property { get; init; }
         public ScanOperator Operator { get; init; }
         public object[] Values { get; init; }
 
         public static ScanFilter With<T, P>(Expression<Func<T, P>> property, ScanOperator scanOperator, params P[] values)
         {
-            return new ScanFilter
-            {
-                Property = ExpressionHelper.GetPropertyInfo(property).Name,
-                Operator = scanOperator,
-                Values = values.Cast<object>().ToArray()
-            };
+            return new ScanFilter(ExpressionHelper.GetPropertyInfo(property).Name,
+                scanOperator,
+                values.Cast<object>().ToArray());
         }
 
         public string ToString(params string[] argNames)
@@ -68,10 +72,10 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         private readonly IDynamoDBContext context;
         private readonly Func<DynamoDBOperationConfig> config;
         private readonly HashSet<ScanFilter> filters = new();
-        private string indexName;
+        private string? indexName;
         private bool reverse;
         private ConditionalOperatorValues conditionalOp = ConditionalOperatorValues.And;
-        public bool consistentRead;
+        private bool consistentRead;
 
         public ScanBuilder(IDynamoDBContext context, Func<DynamoDBOperationConfig> config)
         {
@@ -81,6 +85,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
 
         public IScanBuilder<T> UseIndex(string indexName)
         {
+            ArgumentNullException.ThrowIfNull(indexName);
             this.indexName = indexName;
             return this;
         }
@@ -108,55 +113,50 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
                     values.Cast<DateOnly>(),
                     d => asLong ? d.ToUnixTimeSeconds() : d.ToString());
 
-                filters.Add(new ScanFilter
-                {
-                    Property = ExpressionHelper.GetPropertyInfo(property).Name,
-                    Operator = scanOp,
-                    Values = temp
-                });
+                filters.Add(new ScanFilter(
+                    ExpressionHelper.GetPropertyInfo(property).Name,
+                    scanOp,
+                    temp));
             }
             else
             {
-                filters.Add(new ScanFilter
-                {
-                    Property = ExpressionHelper.GetPropertyInfo(property).Name,
-                    Operator = scanOp,
-                    Values = values.Cast<object>().ToArray()
-                });
+                filters.Add(new ScanFilter(
+                    ExpressionHelper.GetPropertyInfo(property).Name,
+                    scanOp,
+                    values.Cast<object>().ToArray()
+                ));
             }
             return this;
         }
 
         public IScanBuilder<T> Where<R>(Expression<Func<T, IEnumerable<R>>> property, ScanOperator scanOp, R value)
         {
-            if (!(new ScanOperator[] { ScanOperator.Contains, ScanOperator.NotContains }).Contains(scanOp))
+            if (!(new[] { ScanOperator.Contains, ScanOperator.NotContains }).Contains(scanOp))
                 throw new ArgumentException("Not a supported scan operator on sets");
 
             if (typeof(R).IsAssignableFrom(typeof(DateOnly)))
             {
                 var prop = ExpressionHelper.GetPropertyInfo(property);
                 var asLong = ExpressionHelper.GetDynamoDBAttributes(prop)
-                    .Any(propAttr => propAttr is not null && propAttr.Converter == typeof(DateOnlyToLongConverter));
+                    .Any(propAttr => propAttr.Converter == typeof(DateOnlyToLongConverter));
 
-                object temp = value;
+                object temp = value!;
                 if (value is DateOnly dateOnly)
                     temp = asLong ? dateOnly.ToUnixTimeSeconds() : dateOnly.ToString();
 
-                filters.Add(new ScanFilter
-                {
-                    Property = ExpressionHelper.GetPropertyInfo(property).Name,
-                    Operator = scanOp,
-                    Values = new object[] { temp }
-                });
+                filters.Add(new ScanFilter(
+                    ExpressionHelper.GetPropertyInfo(property).Name,
+                    scanOp,
+                    new[] { temp }
+                ));
             }
             else
             {
-                filters.Add(new ScanFilter
-                {
-                    Property = ExpressionHelper.GetPropertyInfo(property).Name,
-                    Operator = scanOp,
-                    Values = new object[] { value }
-                });
+                filters.Add(new ScanFilter(
+                    ExpressionHelper.GetPropertyInfo(property).Name,
+                    scanOp,
+                    new object[] { value! }
+                ));
             }
             return this;
         }

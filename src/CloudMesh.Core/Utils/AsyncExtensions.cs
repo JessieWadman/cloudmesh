@@ -140,9 +140,11 @@ namespace System
         private static MethodInfo ConvertValueTaskMethod = typeof(AsyncExtensions).GetMethod(nameof(ConvertValueTask),
             BindingFlags.Static | BindingFlags.NonPublic)!;
 
-        private static async ValueTask<T> ConvertValueTask<T>(ValueTask<object?> task)
+        private static async ValueTask<T?> ConvertValueTask<T>(ValueTask<object?> task)
         {
             var result = await task;
+            if (result == null)
+                return default;
             return (T)result;
         }
 

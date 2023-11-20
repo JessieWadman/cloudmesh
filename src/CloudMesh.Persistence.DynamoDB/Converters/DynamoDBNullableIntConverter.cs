@@ -12,7 +12,7 @@ public class DynamoDBNullableIntAttribute : DynamoDBPropertyAttribute
 
 public class DynamoDBNullableIntConverter : IPropertyConverter
 {
-    public object FromEntry(DynamoDBEntry entry)
+    public object? FromEntry(DynamoDBEntry entry)
     {
         int? nullableInt;
 
@@ -28,7 +28,7 @@ public class DynamoDBNullableIntConverter : IPropertyConverter
         return nullableInt;
     }
 
-    public DynamoDBEntry ToEntry(object value)
+    public DynamoDBEntry ToEntry(object? value)
     {
         if (value == null)
         {

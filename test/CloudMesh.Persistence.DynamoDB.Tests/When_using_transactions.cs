@@ -8,8 +8,8 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
         public record TestRec
         {
             [DynamoDBHashKey]
-            public string Id { get; set; }
-            public string Name { get; set; }
+            public string? Id { get; set; }
+            public string? Name { get; set; }
         }
 
         public class And_transaction_is_committed

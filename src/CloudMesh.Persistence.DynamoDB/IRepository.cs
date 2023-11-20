@@ -10,10 +10,10 @@ namespace CloudMesh.Persistence.DynamoDB
 
     public interface IRepository<T> : IDisposable
     {
-        ValueTask<T> GetById(DynamoDBValue hashKey, CancellationToken cancellationToken);
-        ValueTask<T> GetById(DynamoDBValue hashKey, DynamoDBValue rangeKey, CancellationToken cancellationToken);
-        ValueTask<T> GetById(string indexName, DynamoDBValue hashKey, CancellationToken cancellationToken);
-        ValueTask<T> GetById(string indexName, DynamoDBValue hashKey, DynamoDBValue rangeKey, CancellationToken cancellationToken);
+        ValueTask<T?> GetById(DynamoDBValue hashKey, CancellationToken cancellationToken);
+        ValueTask<T?> GetById(DynamoDBValue hashKey, DynamoDBValue rangeKey, CancellationToken cancellationToken);
+        ValueTask<T?> GetById(string indexName, DynamoDBValue hashKey, CancellationToken cancellationToken);
+        ValueTask<T?> GetById(string indexName, DynamoDBValue hashKey, DynamoDBValue rangeKey, CancellationToken cancellationToken);
         ValueTask<T[]> GetByIds(CancellationToken cancellationToken, params DynamoDBValue[] hashKeys);
         ValueTask<T[]> GetByIds(CancellationToken cancellationToken, params (DynamoDBValue HashKey, DynamoDBValue RangeKey)[] keys);
         ValueTask<T[]> GetByIds(string indexName, CancellationToken cancellationToken, params DynamoDBValue[] hashKeys);

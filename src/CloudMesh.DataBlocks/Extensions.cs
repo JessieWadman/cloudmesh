@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using System.Collections.ObjectModel;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Serialization;
 
 namespace CloudMesh.DataBlocks
@@ -28,11 +28,10 @@ namespace CloudMesh.DataBlocks
             var args = expression.GetArguments();
             var constructor = expression.Constructor;
 
-            var dataBlock = (T)FormatterServices.GetUninitializedObject(objectType);
+            var dataBlock = (T)RuntimeHelpers.GetUninitializedObject(objectType);
             if (dataBlock is IDataBlockInitializer init)
             {
-                if (name is null)
-                    name = $"{Interlocked.Increment(ref dataBlockNo)}";
+                name ??= $"{Interlocked.Increment(ref dataBlockNo)}";
                 init.Name = name;
                 if (container is IDataBlockRef parent)
                     init.Parent = parent;

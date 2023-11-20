@@ -40,12 +40,12 @@ public class DynamoDBUnixMillisecondsConverter : IPropertyConverter
         throw new NotSupportedException("Unsupported property type!");
     }
 
-    public object FromEntry(DynamoDBEntry entry)
+    public object? FromEntry(DynamoDBEntry entry)
     {
-        if (entry as Primitive is null || (entry as Primitive).Value is null)
+        if ((entry as Primitive)?.Value is null)
             return null;
 
-        if ((entry as Primitive).Value is string str)
+        if ((entry as Primitive)!.Value is string str)
         {
             if (string.IsNullOrWhiteSpace(str))
                 return null;
@@ -54,6 +54,6 @@ public class DynamoDBUnixMillisecondsConverter : IPropertyConverter
             return null;
         }
 
-        return DateTimeOffset.FromUnixTimeMilliseconds((entry as Primitive).AsLong());
+        return DateTimeOffset.FromUnixTimeMilliseconds((entry as Primitive)!.AsLong());
     }
 }

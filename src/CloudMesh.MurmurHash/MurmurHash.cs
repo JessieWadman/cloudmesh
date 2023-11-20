@@ -173,7 +173,7 @@ namespace CloudMesh.Utils
                 var j = 0;
                 while (j < a.Length)
                 {
-                    h = ExtendHash(h, (uint)a[j].GetHashCode(), c, k);
+                    h = ExtendHash(h, (uint)a[j]!.GetHashCode(), c, k);
                     c = NextMagicA(c);
                     k = NextMagicB(k);
                     j += 1;
@@ -225,7 +225,7 @@ namespace CloudMesh.Utils
                 uint c = 1;
                 foreach (var i in xs)
                 {
-                    var u = (uint)i.GetHashCode();
+                    var u = (uint)i!.GetHashCode();
                     a += u;
                     b ^= u;
                     if (u != 0) c *= u;

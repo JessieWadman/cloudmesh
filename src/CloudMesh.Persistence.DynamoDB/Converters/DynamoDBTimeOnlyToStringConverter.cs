@@ -16,24 +16,17 @@ public class DynamoDBTimeOnlyToStringConverter : IPropertyConverter
     {
         TimeOnly timeOnly;
 
-        if (entry is DynamoDBNull)
-        {
-            timeOnly = default;
-        }
-        else
-        {
-            timeOnly = TimeOnly.Parse(entry.AsString());
-        }
+        timeOnly = entry is DynamoDBNull 
+            ? default 
+            : TimeOnly.Parse(entry.AsString());
 
         return timeOnly;
     }
 
-    public DynamoDBEntry ToEntry(object value)
+    public DynamoDBEntry ToEntry(object? value)
     {
-        if (TimeOnly.Parse(value.ToString()) == default)
-        {
+        if (value is null || !TimeOnly.TryParse(value.ToString(), out _))
             return DynamoDBNull.Null;
-        }
 
         return new Primitive(value.ToString());
     }

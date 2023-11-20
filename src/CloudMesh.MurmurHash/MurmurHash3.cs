@@ -42,7 +42,7 @@
             return ret;
         }
 
-        public static unsafe Guid ComputeHashToGuid(ReadOnlyMemory<byte> buffer)
+        public static Guid ComputeHashToGuid(ReadOnlyMemory<byte> buffer)
         {
             var hash = ComputeHashToBytes(buffer);
             return new Guid(hash);

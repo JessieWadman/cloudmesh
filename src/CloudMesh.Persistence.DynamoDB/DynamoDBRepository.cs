@@ -82,32 +82,32 @@ namespace CloudMesh.Persistence.DynamoDB
                 cancellationToken: cancellationToken));
         }
 
-        public ValueTask<T> GetById(DynamoDBValue hashKey, CancellationToken cancellationToken)
+        public async ValueTask<T?> GetById(DynamoDBValue hashKey, CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
-            return new ValueTask<T>(context.LoadAsync<T>(hashKey.Value, GetOperationConfig(), cancellationToken));
+            return await context.LoadAsync<T>(hashKey.Value, GetOperationConfig(), cancellationToken);
         }
 
-        public ValueTask<T> GetById(DynamoDBValue hashKey, DynamoDBValue rangeKey, CancellationToken cancellationToken)
+        public async ValueTask<T?> GetById(DynamoDBValue hashKey, DynamoDBValue rangeKey, CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
-            return new ValueTask<T>(context.LoadAsync<T>(hashKey.Value, rangeKey.Value, GetOperationConfig(), cancellationToken));
+            return await context.LoadAsync<T>(hashKey.Value, rangeKey.Value, GetOperationConfig(), cancellationToken);
         }
 
-        public ValueTask<T> GetById(string indexName, DynamoDBValue hashKey, CancellationToken cancellationToken)
+        public async ValueTask<T?> GetById(string indexName, DynamoDBValue hashKey, CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
             var opConfig = GetOperationConfig();
             opConfig.IndexName = indexName;
-            return new ValueTask<T>(context.LoadAsync<T>(hashKey.Value, opConfig, cancellationToken));
+            return await context.LoadAsync<T>(hashKey.Value, opConfig, cancellationToken);
         }
 
-        public ValueTask<T> GetById(string indexName, DynamoDBValue hashKey, DynamoDBValue rangeKey, CancellationToken cancellationToken)
+        public async ValueTask<T?> GetById(string indexName, DynamoDBValue hashKey, DynamoDBValue rangeKey, CancellationToken cancellationToken)
         {
             ThrowIfDisposed();
             var opConfig = GetOperationConfig();
             opConfig.IndexName = indexName;
-            return new ValueTask<T>(context.LoadAsync<T>(hashKey.Value, rangeKey.Value, opConfig, cancellationToken));
+            return await context.LoadAsync<T>(hashKey.Value, rangeKey.Value, opConfig, cancellationToken);
         }        
 
         public async ValueTask<T[]> GetByIds(CancellationToken cancellationToken, params DynamoDBValue[] hashKeys)
@@ -120,7 +120,6 @@ namespace CloudMesh.Persistence.DynamoDB
             var result = new List<T>();
             foreach (var batch in hashKeys.Chunk(25))
             {
-
                 var getResult = await dynamoDB.BatchGetItemAsync(new BatchGetItemRequest()
                 {
                     RequestItems = new()
@@ -129,15 +128,15 @@ namespace CloudMesh.Persistence.DynamoDB
                         {
                             Keys = batch
                                 .Select(id => new Dictionary<string, AttributeValue>() {
-                                    [hashKeyName] = new AttributeValue
+                                    [hashKeyName] = new()
                                     {
-                                        S = id.ToObject().ToString()
+                                        S = id.ToObject()?.ToString()
                                     }
                                 })
                                 .ToList()
                         }
                     }
-                });
+                }, cancellationToken);
 
                 var rows = getResult.Responses.Values.First().Select(map =>
                     context.FromDocument<T>(Document.FromAttributeMap(map)));

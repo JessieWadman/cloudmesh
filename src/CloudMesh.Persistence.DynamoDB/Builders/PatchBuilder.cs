@@ -8,7 +8,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
     public interface IPatchBuilder<T> : IUpdateExpressionBuilder<T, IPatchBuilder<T>>
     {
         ValueTask<bool> ExecuteAsync(CancellationToken cancellationToken);
-        ValueTask<T> ExecuteAndGetAsync(CancellationToken cancellationToken);
+        ValueTask<T?> ExecuteAndGetAsync(CancellationToken cancellationToken);
     }
 
     public class PatchBuilder<T> : UpdateExpressionBuilder<T, IPatchBuilder<T>>, IPatchBuilder<T>
@@ -70,7 +70,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
             return true;
         }
 
-        public async ValueTask<T> ExecuteAndGetAsync(CancellationToken cancellationToken)
+        public async ValueTask<T?> ExecuteAndGetAsync(CancellationToken cancellationToken)
         {
             var response = await InternalExecuteAsync(true, cancellationToken);
             if (response is null)

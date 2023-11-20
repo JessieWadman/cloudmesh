@@ -1,18 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net6.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-        <Company>Open Source</Company>
-        <Authors>Jessie Wadman</Authors>
-        <Product>CloudMesh</Product>
         <Description>Fast and efficient MurmurHash implementations based on code from Akka.net project</Description>
-        <Copyright>MIT</Copyright>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
     </PropertyGroup>
 </Project>

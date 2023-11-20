@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -9,7 +9,12 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\..\src\CloudMesh.Core\CloudMesh.Core.csproj" />
+      <ProjectReference Include="..\..\src\CloudMesh.Core\CloudMesh.Core.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="BenchmarkDotNet" Version="0.13.3" />
+      <PackageReference Include="BenchmarkDotNet.Annotations" Version="0.13.3" />
     </ItemGroup>
 
 </Project>

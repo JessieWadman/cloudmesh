@@ -5,11 +5,12 @@ namespace CloudMesh.Persistence.DynamoDB.Converters;
 
 public class DynamoDBEnumToStringConverter<TEnum> : IPropertyConverter
 {
-    public object FromEntry(DynamoDBEntry entry)
+    public object? FromEntry(DynamoDBEntry entry)
     {
         if (entry is DynamoDBNull)
             return default(TEnum);
         var asString = entry.AsString();
+        
         if (int.TryParse(asString, out var intValue))
         {
             foreach (var value in Enum.GetValues(typeof(TEnum)))
@@ -19,15 +20,12 @@ public class DynamoDBEnumToStringConverter<TEnum> : IPropertyConverter
             }
         }
             
-        if (Enum.TryParse(typeof(TEnum), entry.AsString(), true, out var result))
-        {
-            return result;
-        }
-
-        return default(TEnum);
+        return Enum.TryParse(typeof(TEnum), entry.AsString(), true, out var result) 
+            ? result 
+            : default(TEnum);
     }
 
-    public DynamoDBEntry ToEntry(object value)
+    public DynamoDBEntry ToEntry(object? value)
     {
         if (value is null)
             return DynamoDBNull.Null;

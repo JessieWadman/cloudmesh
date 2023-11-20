@@ -5,7 +5,7 @@ namespace CloudMesh.Persistence.DynamoDB.Converters;
 
 public class DynamoDBZeroAsNullIntConverter : IPropertyConverter
 {
-    public object FromEntry(DynamoDBEntry entry)
+    public object? FromEntry(DynamoDBEntry entry)
     {
         int? nullableInt;
 

@@ -33,7 +33,7 @@ public class DateOnlyToLongConverter : IPropertyConverter
         return new Primitive(lng.ToString(), true);
     }
 
-    public object FromEntry(DynamoDBEntry entry)
+    public object? FromEntry(DynamoDBEntry entry)
     {
         if (entry is DynamoDBNull)
             return null;

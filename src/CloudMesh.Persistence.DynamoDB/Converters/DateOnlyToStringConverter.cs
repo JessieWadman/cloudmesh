@@ -38,7 +38,7 @@ public class DateOnlyToStringConverter : IPropertyConverter
         return new Primitive(dateOnly.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), false);
     }
 
-    public object FromEntry(DynamoDBEntry entry)
+    public object? FromEntry(DynamoDBEntry entry)
     {
         if (entry is DynamoDBNull)
             return null;

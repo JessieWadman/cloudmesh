@@ -23,15 +23,15 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
     {
         private readonly DynamoDBContext context;
         private readonly Func<DynamoDBOperationConfig> config;
-        private string indexName;
+        private string? indexName;
         private bool reverse;
         private ConditionalOperatorValues conditionalOp = ConditionalOperatorValues.And;
-        public bool consistentRead;
+        private bool consistentRead;
 
         private DynamoDBValue partitionKey;
         private QueryOperator queryOp;
-        private DynamoDBValue[] sortKeyValues;
-        private List<ScanCondition> queryFilter = new();
+        private DynamoDBValue[]? sortKeyValues;
+        private readonly List<ScanCondition> queryFilter = new();
 
         public QueryBuilder(DynamoDBContext context, Func<DynamoDBOperationConfig> config)
         {
@@ -51,6 +51,8 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
 
         public IQueryBuilder<T> UseIndex(string indexName)
         {
+            ArgumentNullException.ThrowIfNull(indexName);
+            
             if (consistentRead)
                 throw new InvalidOperationException("Cannot use consistent read on global secondary indexes");
             this.indexName = indexName;
@@ -67,6 +69,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         {
             if (!string.IsNullOrEmpty(indexName))
                 throw new InvalidOperationException("Cannot use consistent read on global secondary indexes");
+            
             consistentRead = true;
             return this;
         }
@@ -94,7 +97,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
             if (!string.IsNullOrWhiteSpace(indexName))
                 opConfig.IndexName = indexName;
 
-            if (queryFilter != null && queryFilter.Count > 0)
+            if (queryFilter.Count > 0)
                 opConfig.QueryFilter = queryFilter;
 
             AsyncSearch<T> search;

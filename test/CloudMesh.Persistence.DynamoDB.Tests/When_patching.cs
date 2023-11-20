@@ -10,8 +10,8 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
             [DynamoDBHashKey]
             public Guid Id { get; init; }
 
-            public string Name { get; init; }
-            public string Address { get; init; }
+            public string? Name { get; init; }
+            public string? Address { get; init; }
             public int Version { get; init; }
             public List<string> List { get; init; } = new();
         }

@@ -20,7 +20,7 @@ public class DynamoDbMutex : INetworkMutex
         this.utcTimeProvider = utcTimeProvider ?? throw new ArgumentNullException(nameof(utcTimeProvider));
     }
     
-#if (NET8_0_OR_GREATER)
+#if NET8_0_OR_GREATER
     public DynamoDbMutex(string tableName, TimeProvider timeProvider)
         : this(tableName, timeProvider.GetUtcNow)
     {
@@ -47,7 +47,7 @@ public class DynamoDbMutex : INetworkMutex
             return new DynamoDbMutexLock(
                 tableName, 
                 mutexName, 
-                leaseDto.InstanceId);
+                leaseDto.InstanceId!);
         return null;
     }
 }

@@ -1,0 +1,25 @@
+<Project>
+    <PropertyGroup>
+        <LangVersion>preview</LangVersion>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <NoWarn>CS1591</NoWarn>        
+        <AnalysisLevel>latest</AnalysisLevel>
+        <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+        <ImplicitUsings>true</ImplicitUsings>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <Authors>Jessie Wadman</Authors>
+        <Product>CloudMesh</Product>
+        <Copyright>Copyright (c) 2022 Jessie Wadman</Copyright>
+        <PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
+        <DefineConstants>
+            
+        </DefineConstants>
+    </PropertyGroup>
+</Project>

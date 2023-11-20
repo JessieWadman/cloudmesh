@@ -25,7 +25,9 @@ public class PostgresMutexLock : INetworkMutexLock
         await transaction.CommitAsync();
         await transaction.DisposeAsync();
         await connection.DisposeAsync();
+#if (NET8_0_OR_GREATER)        
         NetworkMutexMetrics.Locks.Add(-1);
+#endif
         NetworkMutexMetrics.LockDuration.Record(duration.ElapsedMilliseconds);
     }
 }

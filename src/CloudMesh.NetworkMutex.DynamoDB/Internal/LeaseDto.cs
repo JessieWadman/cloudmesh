@@ -5,7 +5,7 @@ namespace CloudMesh.NetworkMutex.DynamoDB.Internal;
 internal class LeaseDto
 {
     [DynamoDBHashKey]
-    public required string MutexName { get; set; }
-    public required string InstanceId { get; set; }
-    public long LeaseUntil { get; set; }
+    public string? MutexName { get; set; }
+    public string? InstanceId { get; init; }
+    public long LeaseUntil { get; init; }
 }

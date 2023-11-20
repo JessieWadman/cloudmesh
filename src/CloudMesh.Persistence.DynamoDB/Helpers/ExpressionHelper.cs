@@ -41,7 +41,7 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
             return Expression.Lambda<Func<T, object>>(propAsObject, parameter);
         }
 
-        private static object? ConvertToPropertyType(object value, Type propertyType)
+        private static object? ConvertToPropertyType(object? value, Type propertyType)
         {
             if (value is null)
                 return null;
@@ -55,7 +55,7 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
             return value;
         }
 
-        public static Expression<Func<T, bool>> CreatePredicate<T>(params (PropertyInfo property, object value)[] predicates)
+        public static Expression<Func<T, bool>> CreatePredicate<T>(params (PropertyInfo property, object? value)[] predicates)
         {
             var parameter = Expression.Parameter(typeof(T), "x");
             Expression? comparison = null;
@@ -69,12 +69,14 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                     comparison = Expression.And(comparison, current);
             }
 
+            comparison ??= Expression.Constant(true);
+
             var predicateLambda = Expression.Lambda<Func<T, bool>>(comparison, parameter);
 
             return predicateLambda;
         }
 
-        public static Expression<Func<T, bool>> CreatePredicate<T>(PropertyInfo property, object value)
+        public static Expression<Func<T, bool>> CreatePredicate<T>(PropertyInfo property, object? value)
             => CreatePredicate<T>((property, value));
 
         private static MemberExpression? ExtractMemberExpression(Expression expression)
@@ -271,7 +273,7 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                 else
                     right = Expression.Call(Expression.Constant(value), "ToString", Type.EmptyTypes);
 
-                var method = typeof(string).GetMethod("Compare", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(string), typeof(string), typeof(StringComparison) }, null);
+                var method = typeof(string).GetMethod("Compare", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(string), typeof(string), typeof(StringComparison) }, null)!;
                 var comparison = Expression.Call(null, method, left, right, Expression.Constant(StringComparison.InvariantCulture));
                 return op switch
                 {
@@ -315,7 +317,7 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                 else
                     right = Expression.Call(Expression.Constant(value), "ToString", Type.EmptyTypes);
 
-                var method = typeof(string).GetMethod("Compare", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(string), typeof(string), typeof(StringComparison) }, null);
+                var method = typeof(string).GetMethod("Compare", BindingFlags.Public | BindingFlags.Static, null, new Type[] { typeof(string), typeof(string), typeof(StringComparison) }, null)!;
                 var comparison = Expression.Call(null, method, left, right, Expression.Constant(StringComparison.InvariantCulture));
                 return op switch
                 {
@@ -345,7 +347,7 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
         }
 
         public static Expression<Func<T, bool>> CreatePredicate<T>(
-            string indexName,
+            string? indexName,
             DynamoDBValue hashKey,
             (QueryOperator Operator, DynamoDBValue[] Values)? rangeKeys)
         {
@@ -357,7 +359,7 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
 
             var parameter = Expression.Parameter(typeof(T), "x");
 
-            BinaryExpression comparison = null;
+            BinaryExpression? comparison = null;
             
             if (hashKey.ValueType == DynamoDBValueType.String)
             {
@@ -369,8 +371,8 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                 {
                     comparison = Expression.Equal(
                         Expression.Call(
-                            Expression.Convert(propExpr, typeof(object)), typeof(object).GetMethod("ToString")),
-                        Expression.Constant(hashKey.ToObject().ToString()));
+                            Expression.Convert(propExpr, typeof(object)), typeof(object).GetMethod("ToString")!),
+                        Expression.Constant(hashKey.ToObject()!.ToString()));
                 }
                 // It's not a value type, so we need to do a ?.ToString() 
                 else
@@ -379,10 +381,10 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                     var nullableToString = Expression.Condition(
                         Expression.Equal(propExpr, Expression.Default(propExpr.Type)),
                         Expression.Constant(null, typeof(string)),
-                        Expression.Call(Expression.Convert(propExpr, typeof(object)), typeof(object).GetMethod("ToString")));
+                        Expression.Call(Expression.Convert(propExpr, typeof(object)), typeof(object).GetMethod("ToString")!));
 
                     // x => (x.EmployeeNo == null ? (string)null : x.EmployeeNo.ToString()) == '142'
-                    comparison = Expression.Equal(nullableToString, Expression.Constant(hashKey.ToObject().ToString()));
+                    comparison = Expression.Equal(nullableToString, Expression.Constant(hashKey.ToObject()!.ToString()));
                 }
             }
             else
@@ -408,12 +410,12 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                         (l, r) => Expression.Call(l, "StartsWith", Type.EmptyTypes, r, Expression.Constant(StringComparison.InvariantCulture))),
                     QueryOperator.Between
                         => Expression.And(
-                                Comparison(rangeKeyProp, rangeKeyPropExpression, QueryOperator.GreaterThanOrEqual, rangeKeys.Value.Values[0].ToObject()),
-                                Comparison(rangeKeyProp, rangeKeyPropExpression, QueryOperator.LessThanOrEqual, rangeKeys.Value.Values[1].ToObject())
+                                Comparison(rangeKeyProp, rangeKeyPropExpression, QueryOperator.GreaterThanOrEqual, rangeKeys.Value.Values[0].ToObject()!),
+                                Comparison(rangeKeyProp, rangeKeyPropExpression, QueryOperator.LessThanOrEqual, rangeKeys.Value.Values[1].ToObject()!)
                             ),
                     QueryOperator.Equal
                         => Expression.Equal(rangeKeyPropExpression, Expression.Constant(rangeKeys.Value.Values[0].ToObject())),
-                    _ => Comparison(rangeKeyProp, rangeKeyPropExpression, rangeKeys.Value.Operator, rangeKeys.Value.Values[0].ToObject())
+                    _ => Comparison(rangeKeyProp, rangeKeyPropExpression, rangeKeys.Value.Operator, rangeKeys.Value.Values[0].ToObject()!)
                 };
 
                 comparison = Expression.And(comparison, rangePropComparison);
@@ -426,9 +428,10 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
 
         private static Expression CreateEnumerableContainsExpression<R>(PropertyInfo property, MemberExpression parameter, R[] values)
         {
-            var method = typeof(Enumerable).GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .Where(m => m.ToString() == "Boolean Contains[TSource](System.Collections.Generic.IEnumerable`1[TSource], TSource)")
-                .Single();
+            var method = typeof(Enumerable)
+                .GetMethods(BindingFlags.Public | BindingFlags.Static)
+                .Single(m => m.ToString() == "Boolean Contains[TSource](System.Collections.Generic.IEnumerable`1[TSource], TSource)");
+            
             method = method.MakeGenericMethod(property.PropertyType);
             return Expression.Call(null, method, Expression.Constant(values), parameter);
         }
@@ -445,8 +448,8 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                 ScanOperator.BeginsWith => ToStrings(propertyExpression, Expression.Constant(values[0]),
                                                     (l, r) => Expression.Call(l, "StartsWith", Type.EmptyTypes, r, Expression.Constant(StringComparison.InvariantCulture))),
                 ScanOperator.Between => Expression.And(
-                                            Comparison(property, propertyExpression, ScanOperator.GreaterThanOrEqual, values[0]),
-                                            Comparison(property, propertyExpression, ScanOperator.LessThanOrEqual, values[1])
+                                            Comparison(property, propertyExpression, ScanOperator.GreaterThanOrEqual, values[0]!),
+                                            Comparison(property, propertyExpression, ScanOperator.LessThanOrEqual, values[1]!)
                                         ),
                 ScanOperator.Equal => Expression.Equal(propertyExpression, Expression.Constant(values[0])),
                 ScanOperator.IsNotNull => Expression.NotEqual(propertyExpression, Expression.Constant(null)),
@@ -454,12 +457,12 @@ namespace CloudMesh.Persistence.DynamoDB.Helpers
                 ScanOperator.NotEqual => Expression.NotEqual(propertyExpression, Expression.Constant(values[0])),
                 ScanOperator.Contains => Expression.Call(
                     Expression.Call(propertyExpression, "ToString", Type.EmptyTypes),
-                    "Contains", Type.EmptyTypes, Expression.Constant(values[0].ToString()), Expression.Constant(StringComparison.InvariantCulture)),
+                    "Contains", Type.EmptyTypes, Expression.Constant(values[0]!.ToString()), Expression.Constant(StringComparison.InvariantCulture)),
                 ScanOperator.NotContains => Expression.Not(Expression.Call(
                     Expression.Call(propertyExpression, "ToString", Type.EmptyTypes),
-                    "Contains", Type.EmptyTypes, Expression.Constant(values[0].ToString()), Expression.Constant(StringComparison.InvariantCulture))),
+                    "Contains", Type.EmptyTypes, Expression.Constant(values[0]!.ToString()), Expression.Constant(StringComparison.InvariantCulture))),
                 ScanOperator.In => CreateEnumerableContainsExpression(property, propertyExpression, values),
-                _ => Comparison(property, propertyExpression, op, values[0])
+                _ => Comparison(property, propertyExpression, op, values[0]!)
             };
         }
 

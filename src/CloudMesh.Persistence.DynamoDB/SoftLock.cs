@@ -10,7 +10,7 @@ namespace CloudMesh.Persistence.DynamoDB
 {
     public static class SoftLock
     {
-        private static async ValueTask<(bool Success, T Item)> TryLockInternal<T>(
+        private static async ValueTask<(bool Success, T? Item)> TryLockInternal<T>(
             this IRepository<T> repository,
             DynamoDBValue hashKey, 
             DynamoDBValue? rangeKey,
@@ -54,7 +54,7 @@ namespace CloudMesh.Persistence.DynamoDB
             return (true, item);
         }
 
-        public static ValueTask<(bool Success, T Item)> TryLock<T>(
+        public static ValueTask<(bool Success, T? Item)> TryLock<T>(
             this IRepository<T> repository,
             DynamoDBValue hashKey,
             DynamoDBValue rangeKey,
@@ -68,7 +68,7 @@ namespace CloudMesh.Persistence.DynamoDB
             CancellationToken cancellationToken)
             => TryLockInternal(repository, hashKey, rangeKey, lockUntilProperty, timeProvider, lockDuration, cancellationToken);
 
-        public static ValueTask<(bool Success, T Item)> TryLock<T>(
+        public static ValueTask<(bool Success, T? Item)> TryLock<T>(
             this IRepository<T> repository,
             DynamoDBValue hashKey,
             Expression<Func<T, long>> lockUntilProperty,

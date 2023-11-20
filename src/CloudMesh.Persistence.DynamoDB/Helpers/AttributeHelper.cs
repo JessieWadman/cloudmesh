@@ -17,7 +17,7 @@ namespace CloudMesh.Persistence.DynamoDB
                 var customAttribute = Attribute.GetCustomAttribute(propertyInfo, typeof(DynamoDBPropertyAttribute), true) as DynamoDBPropertyAttribute;
                 if (customAttribute?.Converter != null && customAttribute.Converter == typeof(DynamoDBEnumToStringConverter<R>))
                 {
-                    return new AttributeValue { S = value.ToString() };
+                    return new AttributeValue { S = value!.ToString() };
                 }
 
                 return new AttributeValue { N = ((int)(object)value!).ToString() };

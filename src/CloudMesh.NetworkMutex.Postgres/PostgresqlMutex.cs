@@ -58,7 +58,9 @@ public class PostgresqlMutex : INetworkMutex
                                      UPDATE SET lock_id = EXCLUDED.lock_id;
                                """;
             await cmd.ExecuteNonQueryAsync(cancellationToken);
+#if (NET8_0_OR_GREATER)            
             NetworkMutexMetrics.Locks.Add(1);
+#endif
             NetworkMutexMetrics.LockWaitTime.Record(duration.ElapsedMilliseconds);
             return new PostgresMutexLock($"{mutexName}#{lockId}", connection, transaction);
         }

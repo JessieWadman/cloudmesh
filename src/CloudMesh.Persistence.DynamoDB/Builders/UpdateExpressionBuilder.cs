@@ -190,7 +190,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
 
             // Adding empty list if list does not exist on item yet. Otherwise will throw exception
             expressionAttributeValues[$":empty_list"] = new AttributeValue() { IsLSet = true };
-            return (TBuilder)(IUpdateExpressionBuilder)this; ;
+            return (TBuilder)(IUpdateExpressionBuilder)this; 
         }
 
         public TBuilder Set<R>(Expression<Func<TEntity, R>> property, R value)

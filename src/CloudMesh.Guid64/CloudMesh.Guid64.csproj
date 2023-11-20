@@ -5,29 +5,14 @@
         <Nullable>enable</Nullable>
         <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-        <Company>Open Source</Company>
-        <Authors>Jessie Wadman</Authors>
-        <Product>CloudMesh</Product>
         <Description>Roughly time-sortable 64 bit Guid based on Twitter's Snowflake algorithm</Description>
-        <Copyright>MIT</Copyright>
-        <PackageLicenseExpression>MIT</PackageLicenseExpression>
-        <PackageProjectUrl>https://github.com/JessieWadman/cloudmesh</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/JessieWadman/cloudmesh</RepositoryUrl>
-        <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
     </PropertyGroup>
 
     <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
-        <PackageReference Include="System.IO.Hashing" Version="8.0" />
+        <PackageReference Include="System.IO.Hashing" />
     </ItemGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' == 'net7.0'">
+    <ItemGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'net7.0'">
         <ProjectReference Include="..\CloudMesh.MurmurHash\CloudMesh.MurmurHash.csproj" />
     </ItemGroup>
-
-    <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
-        <ProjectReference Include="..\CloudMesh.MurmurHash\CloudMesh.MurmurHash.csproj" />
-    </ItemGroup>
-
-    
-    
 </Project>
