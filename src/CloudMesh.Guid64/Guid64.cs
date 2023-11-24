@@ -54,7 +54,18 @@ namespace System
         {
             var currentTimestamp = Timestamp();
             if (currentTimestamp < lastTimestamp)
-                throw new InvalidOperationException("Invalid System Clock!");
+            {
+                for (var i = 0; i < 3; i++)
+                {
+                    currentTimestamp = WaitNextMillis(currentTimestamp);
+                    sequence = 0L;
+                    if (currentTimestamp > lastTimestamp)
+                        break;
+                }
+
+                if (currentTimestamp < lastTimestamp)
+                    throw new InvalidOperationException($"Invalid System Clock. Current timestamp {currentTimestamp} is before last timestamp {lastTimestamp}");
+            }
 
             if (currentTimestamp == lastTimestamp)
             {

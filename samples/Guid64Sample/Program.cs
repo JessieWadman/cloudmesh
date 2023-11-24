@@ -1,5 +1,9 @@
 ﻿using System.Diagnostics;
 
+HashSet<long> guids = new();
+for (var i = 0; i < 1_000_000; i++)
+    guids.Add(Guid64.NewGuid());
+
 long id1 = Guid64.NewGuid();
 long id2 = Guid64.NewGuid();
 
