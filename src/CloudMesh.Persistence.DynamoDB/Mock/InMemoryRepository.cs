@@ -280,6 +280,33 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
             }
             return result.ToArray();
         }
+        
+        public async ValueTask<bool> CreateAsync(T item, CancellationToken cancellationToken)
+        {
+            var existingRows = Rows;
+
+            var hashKeyProp = ExpressionHelper.GetHashKeyProperty<T>();
+            var keyValue = hashKeyProp.GetValue(item);
+
+            existingRows = existingRows.Where(ExpressionHelper.CreatePredicate<T>(hashKeyProp, keyValue));
+
+            var rangeKeyProp = ExpressionHelper.TryGetRangeKeyProperty<T>();
+            
+            if (rangeKeyProp != null)
+            {
+                var sortKeyValue = rangeKeyProp.GetValue(item);
+                existingRows = existingRows.Where(ExpressionHelper.CreatePredicate<T>(rangeKeyProp, sortKeyValue));
+            }
+
+            if (existingRows.Any())
+                return false;
+
+            await DeleteAsync(cancellationToken, existingRows.ToArray());
+
+            rows.Add(JsonSerializer.Serialize(item));
+
+            return true;
+        }
 
         public async ValueTask SaveAsync(T item, CancellationToken cancellationToken)
         {

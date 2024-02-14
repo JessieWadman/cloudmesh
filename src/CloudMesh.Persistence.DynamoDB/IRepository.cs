@@ -19,7 +19,26 @@ namespace CloudMesh.Persistence.DynamoDB
         ValueTask<T[]> GetByIds(string indexName, CancellationToken cancellationToken, params DynamoDBValue[] hashKeys);
         ValueTask<T[]> GetByIds(string indexName, CancellationToken cancellationToken, params (DynamoDBValue HashKey, DynamoDBValue RangeKey)[] keys);
 
+        /// <summary>
+        /// Attempts to save the item, only if it does not already exist.
+        /// </summary>
+        /// <param name="item">Item to save</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>True if the item was created, false if it already existed</returns>
+        ValueTask<bool> CreateAsync(T item, CancellationToken cancellationToken);
+        
+        /// <summary>
+        /// Saves the item, overwriting an existing on if it exists
+        /// </summary>
+        /// <param name="item">Item to save</param>
+        /// <param name="cancellationToken">CancellationToken</param>
         ValueTask SaveAsync(T item, CancellationToken cancellationToken);
+        
+        /// <summary>
+        /// Saves the items, overwriting existing ones if they exist
+        /// </summary>
+        /// <param name="items">Items to save</param>
+        /// <param name="cancellationToken">CancellationToken</param>
         ValueTask SaveAsync(IEnumerable<T> items, CancellationToken cancellationToken);
         ValueTask DeleteAsync(T item, CancellationToken cancellationToken);
         ValueTask DeleteAsync(CancellationToken cancellationToken, params T[] items);

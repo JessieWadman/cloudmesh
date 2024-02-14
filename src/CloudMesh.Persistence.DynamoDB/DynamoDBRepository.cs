@@ -7,7 +7,7 @@ using CloudMesh.Persistence.DynamoDB.Helpers;
 
 namespace CloudMesh.Persistence.DynamoDB
 {
-    public class DynamoDBRepository<T> : IRepository<T>, IDisposable
+    public class DynamoDBRepository<T> : IRepository<T>
     {
         private bool disposed;
         private readonly string tableName;
@@ -31,7 +31,7 @@ namespace CloudMesh.Persistence.DynamoDB
 
         private void ThrowIfDisposed()
         {
-            if (disposed)
+            if (!disposed)
                 throw new ObjectDisposedException(GetType().Name);
         }
 
@@ -218,6 +218,38 @@ namespace CloudMesh.Persistence.DynamoDB
         {
             ThrowIfDisposed();
             return new ValueTask(context.SaveAsync(item, GetOperationConfig(), cancellationToken));            
+        }
+        
+        public async ValueTask<bool> CreateAsync(T item, CancellationToken cancellationToken)
+        {
+            ThrowIfDisposed();
+            
+            var attributes = context.ToDocument(item).ToAttributeMap();
+
+            var hashKeyProperty = ExpressionHelper.TryGetHashKeyProperty<T>();
+            if (hashKeyProperty == null)
+                throw new InvalidOperationException($"{typeof(T).Name} does not have a hash key!");
+            
+            var hashAttributeName = ExpressionHelper.GetDynamoDBPropertyName(hashKeyProperty);
+            
+            var putRequest = new PutItemRequest
+            {
+                Item = attributes,
+                ConditionExpression = $"attribute_not_exists({hashAttributeName})",
+                TableName = this.tableName
+            };
+
+            try
+            {
+                var result = await dynamoDB.PutItemAsync(putRequest, cancellationToken);
+                if ((int)result.HttpStatusCode < 200 || (int)result.HttpStatusCode >= 300)
+                    throw new HttpRequestException("The request was not successful", null, result.HttpStatusCode);
+                return true;
+            }
+            catch (ConditionalCheckFailedException)
+            {
+                return false;
+            }
         }
 
         public ValueTask SaveAsync(IEnumerable<T> items, CancellationToken cancellationToken)
