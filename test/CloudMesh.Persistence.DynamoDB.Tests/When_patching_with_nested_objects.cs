@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 
 namespace Persistence.DynamoDB.Tests
 {
-    public class PatchSetOnNestedObject
+    public class When_patching_with_nested_objects
     {
         public class Manager
         {
@@ -27,7 +27,7 @@ namespace Persistence.DynamoDB.Tests
 
 
         [Fact]
-        public void DotNotationShouldWork()
+        public void Dot_Notation_Should_Work()
         {
             Expression<Func<Employee, string?>> expr = e => e.Employments[0].Manager.DisplayName;
             var (propertyPath, _) = ExpressionHelper.GetDotNotation(expr);
@@ -36,7 +36,7 @@ namespace Persistence.DynamoDB.Tests
         }
 
         [Fact]
-        public void ListAttributeShouldWork()
+        public void List_Attribute_Should_Work()
         {
             var employments = new Employment[]
             {
