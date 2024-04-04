@@ -69,6 +69,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "benchmarks", "benchmarks", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MemoryStreamAccessorBenchmarks", "benchmarks\MemoryStreamAccessorBenchmarks\MemoryStreamAccessorBenchmarks.csproj", "{F123DF0D-A3FE-47F8-98D1-12AD09105ECB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.Variant", "src\CloudMesh.Variant\CloudMesh.Variant.csproj", "{F4FCC9F5-A188-4234-B727-BEA3988FB911}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -155,6 +157,10 @@ Global
 		{F123DF0D-A3FE-47F8-98D1-12AD09105ECB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F123DF0D-A3FE-47F8-98D1-12AD09105ECB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F123DF0D-A3FE-47F8-98D1-12AD09105ECB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F4FCC9F5-A188-4234-B727-BEA3988FB911}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F4FCC9F5-A188-4234-B727-BEA3988FB911}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F4FCC9F5-A188-4234-B727-BEA3988FB911}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F4FCC9F5-A188-4234-B727-BEA3988FB911}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -183,6 +189,7 @@ Global
 		{AC2EBCA9-20D8-4230-AAF2-B8BE5B1CFBF7} = {9687377C-3528-4E84-A6A4-96B21F36CEC2}
 		{A9D94DD5-F9C6-4D6A-B388-6D13CB85B183} = {AC2EBCA9-20D8-4230-AAF2-B8BE5B1CFBF7}
 		{F123DF0D-A3FE-47F8-98D1-12AD09105ECB} = {1C0A73BE-DB02-4803-99AE-647F691C2CA8}
+		{F4FCC9F5-A188-4234-B727-BEA3988FB911} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1B0642CC-1BC5-42D7-9CE3-87B1D1080B36}
