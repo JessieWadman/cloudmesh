@@ -71,7 +71,7 @@ public class BufferedStreamLineReader
         if (stream == null)
             throw new ObjectDisposedException(nameof(stream));
                 
-        if (endOfStream)
+        if (endOfStream && readBufferToExamine.Length == 0)
             return new(false);
 
         if (TryGetNextLineFromBuffer())
@@ -85,6 +85,7 @@ public class BufferedStreamLineReader
     private async Task<bool> ReadMoreAsync(CancellationToken cancellationToken)
     {
         var numberOfBytesRead = await stream!.ReadAsync(readBuffer, cancellationToken);
+        endOfStream = numberOfBytesRead < readBuffer.Length;
         readBufferToExamine = readBuffer[..numberOfBytesRead];
 
         // Reached end of stream, and still have remainder?
@@ -99,15 +100,42 @@ public class BufferedStreamLineReader
         // Use the opportunity when we try to read more from stream and fail to release remainder buffer
         if (numberOfBytesRead < 1)
             ShrinkRemainderBuffer();
-
+        
         return TryGetNextLineFromBuffer();
+    }
+
+    private void ConcatenateRemainder(ReadOnlyMemory<byte> readBufferToUse)
+    {
+        // Will the rest of the line fit in the remainder buffer?
+        var concatenatedLineLength = remainderFromPreviousRead.Length + readBufferToUse.Length;
+        if (remainderFromPreviousReadBuffer.Length < concatenatedLineLength)
+        {
+            var bytesPreserved = remainderFromPreviousRead.Length;
+            MemoryHelper.GrowBuffer(
+                ref remainderFromPreviousReadBuffer, 
+                concatenatedLineLength, 
+                true);
+                
+            remainderFromPreviousRead = remainderFromPreviousReadBuffer[..bytesPreserved];
+        }
+
+        if (readBufferToUse.Length > 0)
+        {
+            // Yes, append it after the remainder
+            readBufferToUse.CopyTo(remainderFromPreviousReadBuffer[remainderFromPreviousRead.Length..]);
+        }
+
+        currentLineBytes = remainderFromPreviousReadBuffer[..concatenatedLineLength];
+            
+        // We've used up the remainder, so clear it
+        remainderFromPreviousRead = ReadOnlyMemory<byte>.Empty;
     }
     
     private bool TryGetNextLineFromBuffer()
     {
         if (stream == null)
             throw new ObjectDisposedException(nameof(stream));
-        
+
         // Do we have any bytes left in our read buffer? 
         if (readBufferToExamine.Length == 0)
         {
@@ -121,6 +149,16 @@ public class BufferedStreamLineReader
         // No new-line character in remainder of bytes read
         if (indexOfNewLine < 0)
         {
+            if (endOfStream)
+            {
+                if (remainderFromPreviousRead.Length > 0)
+                    ConcatenateRemainder(readBufferToExamine);
+                else
+                    currentLineBytes = readBufferToExamine;
+                readBufferToExamine = ReadOnlyMemory<byte>.Empty;
+                return currentLineBytes.Length > 0;
+            }
+            
             // Set aside what's left in the read buffer for after next read 
             CopyToRemainder();
             readBufferToExamine = ReadOnlyMemory<byte>.Empty;
@@ -136,29 +174,7 @@ public class BufferedStreamLineReader
         // Do we still have characters from previous file read we need to prepend?
         if (remainderFromPreviousRead.Length > 0)
         {
-            // Will the rest of the line fit in the remainder buffer?
-            var concatenatedLineLength = remainderFromPreviousRead.Length + bytesBeforeNewLine.Length;
-            if (remainderFromPreviousReadBuffer.Length < concatenatedLineLength)
-            {
-                var bytesPreserved = remainderFromPreviousRead.Length;
-                MemoryHelper.GrowBuffer(
-                    ref remainderFromPreviousReadBuffer, 
-                    concatenatedLineLength, 
-                    true);
-                
-                remainderFromPreviousRead = remainderFromPreviousReadBuffer[..bytesPreserved];
-            }
-
-            if (bytesBeforeNewLine.Length > 0)
-            {
-                // Yes, append it after the remainder
-                bytesBeforeNewLine.CopyTo(remainderFromPreviousReadBuffer[remainderFromPreviousRead.Length..]);
-            }
-
-            currentLineBytes = remainderFromPreviousReadBuffer[..concatenatedLineLength];
-            
-            // We've used up the remainder, so clear it
-            remainderFromPreviousRead = ReadOnlyMemory<byte>.Empty;
+            ConcatenateRemainder(bytesBeforeNewLine);
             // Advance read window in our buffer
             readBufferToExamine = readBufferToExamine[(indexOfNewLine + 1)..];
             CurrentLineNumber++;
