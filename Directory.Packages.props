@@ -15,7 +15,7 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
     
     <PackageVersion Include="AWSSDK.DynamoDBv2" Version="3.7" />
-    <PackageVersion Include="Npgsql" Version="8.0" />
+    <PackageVersion Include="Npgsql" Version="8.0.3" />
 
     <PackageVersion Include="BenchmarkDotNet" Version="0.13.10" />
     <PackageVersion Include="BenchmarkDotNet.Annotations" Version="0.13.10" />
