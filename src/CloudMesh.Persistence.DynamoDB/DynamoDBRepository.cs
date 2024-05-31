@@ -31,7 +31,7 @@ namespace CloudMesh.Persistence.DynamoDB
 
         private void ThrowIfDisposed()
         {
-            if (!disposed)
+            if (disposed)
                 throw new ObjectDisposedException(GetType().Name);
         }
 
