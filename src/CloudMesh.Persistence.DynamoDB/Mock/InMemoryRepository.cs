@@ -5,27 +5,27 @@ using CloudMesh.Persistence.DynamoDB.Builders;
 using CloudMesh.Persistence.DynamoDB.Helpers;
 using CloudMesh.Serialization.Json;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using CloudMesh.Collections;
 using Expression = System.Linq.Expressions.Expression;
 
 namespace CloudMesh.Persistence.DynamoDB.Mock
 {
     public abstract class InMemoryDb
     {
-        internal Dictionary<string, List<string>> Tables = new();
+        internal ConcurrentDictionary<string, ConcurrentList<string>> Tables = new();
     }
 
     public class InMemoryRepositoryFactory : InMemoryDb, IRepositoryFactory
     {
         public IRepository<T> For<T>(string tableName)
         {
-            if (!Tables.TryGetValue(tableName, out var rows))
-                rows = Tables[tableName] = new List<string>();
-
+            var rows = Tables.GetOrAdd(tableName, _ => new ConcurrentList<string>());
             return new InMemoryRepository<T>(rows);
         }
 
@@ -40,18 +40,15 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
         private readonly InMemoryRepositoryFactory repositoryFactory;
         internal bool Success = true;
 
-        public InMemoryTransactionBuilder(InMemoryRepositoryFactory repositoryFactory, Dictionary<string, List<string>> tables)
+        public InMemoryTransactionBuilder(InMemoryRepositoryFactory repositoryFactory, ConcurrentDictionary<string, ConcurrentList<string>> tables)
         {
-            foreach (var kp in tables)
-                this.Tables[kp.Key] = kp.Value;
+            this.Tables = new(tables);
             this.repositoryFactory = repositoryFactory ?? throw new ArgumentNullException(nameof(repositoryFactory));
         }
 
         public InMemoryTable<T> GetTable<T>(string tableName)
         {
-            if (!Tables.TryGetValue(tableName, out var rows))
-                rows = Tables[tableName] = new List<string>();
-
+            var rows = Tables.GetOrAdd(tableName, _ => new ConcurrentList<string>());
             return new InMemoryTable<T>(rows);
         }
 
@@ -161,12 +158,12 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
             var getRow = table.GetById(hashKey, rangeKey, CancellationToken.None);
             Debug.Assert(getRow.IsCompleted);
             var row = getRow.Result;
-            if (row is null)
-            {
-                row = Activator.CreateInstance<T>();
-                ExpressionHelper.GetHashKeyProperty<T>().SetValue(row, hashKey.Value);
-                ExpressionHelper.GetRangeKeyProperty<T>().SetValue(row, rangeKey.Value);
-            }
+            if (row is not null) 
+                return new InMemoryTransactPatchBuilder<T>(this, table, row);
+            
+            row = Activator.CreateInstance<T>();
+            ExpressionHelper.GetHashKeyProperty<T>().SetValue(row, hashKey.Value);
+            ExpressionHelper.GetRangeKeyProperty<T>().SetValue(row, rangeKey.Value);
             return new InMemoryTransactPatchBuilder<T>(this, table, row);
         }
                
@@ -181,13 +178,13 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
 
     public class InMemoryTable<T>
     {
-        private readonly List<string> rows;
+        private readonly ConcurrentList<string> rows;
         
         public IQueryable<T> Rows => this.rows
             .Select(row => JsonSerializer.Deserialize<T>(row)!)
             .AsQueryable();
 
-        public InMemoryTable(List<string> rows)
+        public InMemoryTable(ConcurrentList<string> rows)
         {
             this.rows = rows ?? throw new ArgumentNullException(nameof(rows));
         }
@@ -356,9 +353,8 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
                     indexes.Add(index);
             }
 
-            foreach (var index in indexes.OrderByDescending(i => i))
-                rows.RemoveAt(index);
-
+            rows.RemoveAt(indexes);
+            
             return ValueTask.CompletedTask;
         }
 
@@ -397,7 +393,7 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
 
     public class InMemoryRepository<T> : InMemoryTable<T>, IRepository<T>
     {
-        public InMemoryRepository(List<string> rows)
+        public InMemoryRepository(ConcurrentList<string> rows)
             : base(rows)
         {
         }
@@ -444,7 +440,7 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
         private string? indexName;
 
         private DynamoDBValue? hashKey;
-        private (QueryOperator, DynamoDBValue[])? rangeKeys = null;
+        private (QueryOperator, DynamoDBValue[])? rangeKeys;
 
         public InMemoryQueryBuilder(HashSet<T> source)
         {
@@ -470,7 +466,7 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
         }
 
 #pragma warning disable CS1998 // Async method lacks 'await' operators and will run synchronously
-        //TODO: Returns empty while unit-testing.
+        // TODO: Returns empty while unit-testing.
         public async IAsyncEnumerable<T> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken)
 #pragma warning restore CS1998 // Async method lacks 'await' operators and will run synchronously
         {
@@ -510,7 +506,7 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
 
         public IQueryBuilder<T> WithQueryFilter<R>(Expression<Func<T, R>> property, ScanOperator op, params R[] values)
         {
-            //TODO: implement
+            // TODO: implement
             return this;
         }
     }
@@ -520,7 +516,7 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
         private IQueryable<T> query;
         private bool useOrInsteadOfAnd = false;
         private readonly HashSet<Expression> whereClauses = new();
-        private readonly ParameterExpression parameter = System.Linq.Expressions.Expression.Parameter(typeof(T), "x");
+        private readonly ParameterExpression parameter = Expression.Parameter(typeof(T), "x");
 
         public InMemoryScanBuilder(HashSet<T> rows)
         {
@@ -794,7 +790,7 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
         
 
         /// <summary>
-        /// In case of collection checking items count, in case of string string length
+        /// In case of collection checking items count, in case of string length
         /// </summary>
         /// <typeparam name="R"></typeparam>
         /// <param name="property"></param>

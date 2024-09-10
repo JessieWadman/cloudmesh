@@ -11,6 +11,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\CloudMesh.Guid64\CloudMesh.Guid64.csproj" />
+	  <ProjectReference Include="..\CloudMesh.Uuid\CloudMesh.Uuid.csproj" />
 	</ItemGroup>
 
 </Project>
