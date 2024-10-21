@@ -22,7 +22,7 @@ post.Set(when, p => p.Contacts["Email"], "bob@upgraded.com");
 
 when = new DateOnly(2025, 12, 01);
 
-var final = post.GetAt(when);s
+var final = post.GetAt(when);
 Console.WriteLine(JsonSerializer.Serialize(final));
 Console.WriteLine(post.ToString());
 
