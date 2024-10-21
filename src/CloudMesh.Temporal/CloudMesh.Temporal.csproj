@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <Description>Framework for handling data structures with future changes</Description>
+    </PropertyGroup>   
+
+    <ItemGroup>
+      <ProjectReference Include="..\CloudMesh.DotNotation\CloudMesh.DotNotation.csproj" />
+    </ItemGroup>   
+
+</Project>
