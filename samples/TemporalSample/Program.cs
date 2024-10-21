@@ -13,10 +13,16 @@ post.Set(when, p => p.Addresses["Home"].Street, "1 CloudMesh way");
 post.Set(when, p => p.Addresses["Home"].City, "Stockholm");
 
 when = new DateOnly(2025, 12, 01);
-
 post.Set(when, p => p.Contacts["Email"], "bob@bob.com");
 
-var final = post.GetAt(when);
+// This will replace the previous one before it occurs earlier in time, and we have the flag by default set
+// to clear any future, pending changes to the property being set.  
+when = new DateOnly(2025, 10, 01);
+post.Set(when, p => p.Contacts["Email"], "bob@upgraded.com");
+
+when = new DateOnly(2025, 12, 01);
+
+var final = post.GetAt(when);s
 Console.WriteLine(JsonSerializer.Serialize(final));
 Console.WriteLine(post.ToString());
 

@@ -110,8 +110,9 @@ public class Temporal<T>
     /// <param name="pointInTime">The date the value should take effect</param>
     /// <param name="property">The property that should change. This can be a nested property.</param>
     /// <param name="value">The value that should take effect at the date</param>
+    /// <param name="clearFutureChanges">If this change replaces all pending changes to the same property at later dates</param>
     /// <typeparam name="R">Type value type</typeparam>
-    public void Set<R>(DateOnly pointInTime, Expression<Func<T, R>> property, R value)
+    public void Set<R>(DateOnly pointInTime, Expression<Func<T, R>> property, R value, bool clearFutureChanges = true)
     {
         var (propertyName, _) = DotNotation.ToDotNotation(property);
 
@@ -119,6 +120,21 @@ public class Temporal<T>
             pendingChanges[pointInTime] = pointInTimeChanges = new Dictionary<string, object?>();
 
         pointInTimeChanges[propertyName] = value;
+
+        if (!clearFutureChanges)
+            return;
+
+        var clonedList = pendingChanges
+            .OrderBy(kp => kp.Key)
+            .Where(kp => kp.Key > pointInTime && kp.Value.ContainsKey(propertyName))
+            .ToArray();
+
+        foreach (var changes in clonedList)
+        {
+            changes.Value.Remove(propertyName);
+            if (changes.Value.Count == 0)
+                pendingChanges.Remove(changes.Key);
+        }
     }
 
     /// <summary>
