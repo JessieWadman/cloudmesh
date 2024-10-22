@@ -24,12 +24,15 @@ when = new DateOnly(2025, 12, 01);
 
 var final = post.GetAt(when);
 Console.WriteLine(JsonSerializer.Serialize(final));
-Console.WriteLine(post.ToString());
 
 // Expected: 3 points in time
 //      0000-01-01
 //      2019-12-01
 //      2025-12-01
+Console.WriteLine($"Employee has {post.GetPointInTimes().Count()} points in time.");
+
+when = new DateOnly(2025, 09, 01);
+post.ReduceTo(when);
 Console.WriteLine($"Employee has {post.GetPointInTimes().Count()} points in time.");
 
 public class Employee : Temporal<EmployeeSnapshot>

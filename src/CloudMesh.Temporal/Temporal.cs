@@ -199,6 +199,45 @@ public class Temporal<T>
         return instance;
     }
 
+    /// <summary>
+    /// Removes all redundant history of changes before a given point in time.
+    /// </summary>
+    /// <param name="pointInTime"></param>
+    public void ReduceTo(DateOnly pointInTime)
+    {
+        // Dictionary to track the latest value for each property
+        var latestPropertyValues = new Dictionary<string, object?>();
+
+        // Get all the changes that occurred up to the given point in time
+        var changesToApply = pendingChanges
+            .Where(entry => entry.Key <= pointInTime)
+            .OrderByDescending(entry => entry.Key)  // Sort by descending to get the latest changes first
+            .SelectMany(entry => entry.Value)
+            .ToList();  // Flatten the dictionary of changes
+
+        // Apply only the latest change for each property
+        foreach (var change in changesToApply)
+        {
+            if (!latestPropertyValues.ContainsKey(change.Key))
+            {
+                latestPropertyValues[change.Key] = change.Value;
+            }
+        }
+
+        foreach (var key in pendingChanges.Keys.Where(k => k <= pointInTime && k != default).ToArray())
+        {
+            pendingChanges.Remove(key);
+        }
+        
+        if (!pendingChanges.ContainsKey(default))
+            pendingChanges.Add(default, new());
+        
+        foreach (var change in latestPropertyValues)
+        {
+            pendingChanges[default][change.Key] = change.Value;
+        }
+    }
+
     public override string ToString()
     {
         var temp = JsonSerializer.Serialize(this)[..^1];
