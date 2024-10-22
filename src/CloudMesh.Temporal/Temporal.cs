@@ -235,7 +235,7 @@ public class Temporal<T>
         
         foreach (var change in latestPropertyValues)
         {
-            if (DefaultValueComparer.IsDefaultValue(change.Value))
+            if (DefaultValueComparer.IsDefaultValue(change.Value, true))
                 continue;
             
             pendingChanges[default][change.Key] = change.Value;
