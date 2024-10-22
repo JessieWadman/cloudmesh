@@ -1,4 +1,5 @@
 ﻿using System.Buffers;
+using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Text;
 using System.Text.Json;
@@ -234,6 +235,9 @@ public class Temporal<T>
         
         foreach (var change in latestPropertyValues)
         {
+            if (DefaultValueComparer.IsDefaultValue(change.Value))
+                continue;
+            
             pendingChanges[default][change.Key] = change.Value;
         }
     }

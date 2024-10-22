@@ -19,6 +19,8 @@ post.Set(when, p => p.Contacts["Email"], "bob@bob.com");
 // to clear any future, pending changes to the property being set.  
 when = new DateOnly(2025, 10, 01);
 post.Set(when, p => p.Contacts["Email"], "bob@upgraded.com");
+post.Set(when, p => p.Attrib1, null);
+post.Set(when, p => p.Attrib2, default);
 
 when = new DateOnly(2025, 12, 01);
 
@@ -31,7 +33,7 @@ Console.WriteLine(JsonSerializer.Serialize(final));
 //      2025-12-01
 Console.WriteLine($"Employee has {post.GetPointInTimes().Count()} points in time.");
 
-when = new DateOnly(2025, 09, 01);
+when = new DateOnly(2025, 11, 01);
 post.ReduceTo(when);
 Console.WriteLine($"Employee has {post.GetPointInTimes().Count()} points in time.");
 
@@ -50,6 +52,8 @@ public class EmployeeSnapshot
 {
     public int Id { get; set; }
     public string Name { get; set; } = null!;
+    public string? Attrib1 { get; set; }
+    public DateTime Attrib2 { get; set; }
     public Dictionary<string, string> Contacts { get; set; } = null!;
     public Dictionary<string, Address> Addresses { get; set; } = null!;
     public List<JobRole> Roles { get; set; } = null!;
