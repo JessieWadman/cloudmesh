@@ -225,13 +225,12 @@ public class Temporal<T>
             }
         }
 
-        foreach (var key in pendingChanges.Keys.Where(k => k <= pointInTime && k != default).ToArray())
+        foreach (var key in pendingChanges.Keys.Where(k => k <= pointInTime).ToArray())
         {
             pendingChanges.Remove(key);
         }
         
-        if (!pendingChanges.ContainsKey(default))
-            pendingChanges.Add(default, new());
+        pendingChanges.Add(default, new());
         
         foreach (var change in latestPropertyValues)
         {

@@ -6,6 +6,7 @@ var post = new Employee();
 var when = new DateOnly(2019, 12, 01);
 
 post.Set(default, e => e.Name, "Bob");
+post.Set(default, p => p.Attrib3, default);
 
 post.Set(when, p => p.Roles[0].Name, "Accountant");
 post.Set(when, p => p.Contacts["Email"], "bob@domain.com");
@@ -54,6 +55,8 @@ public class EmployeeSnapshot
     public string Name { get; set; } = null!;
     public string? Attrib1 { get; set; }
     public DateTime Attrib2 { get; set; }
+    
+    public int Attrib3 { get; set; }
     public Dictionary<string, string> Contacts { get; set; } = null!;
     public Dictionary<string, Address> Addresses { get; set; } = null!;
     public List<JobRole> Roles { get; set; } = null!;
