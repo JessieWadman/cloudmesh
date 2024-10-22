@@ -23,9 +23,9 @@ namespace CloudMesh.Temporal;
 /// </example>
 public class Temporal<T>
 {
-    private readonly SortedDictionary<DateOnly, Dictionary<string, object?>> pendingChanges = new();
+    protected readonly SortedDictionary<DateOnly, Dictionary<string, object?>> PendingChanges = new();
     
-    public IEnumerable<DateOnly> GetPointInTimes() => pendingChanges.Keys;
+    public IEnumerable<DateOnly> GetPointInTimes() => PendingChanges.Keys;
     
     /// <summary>
     /// Set default values, such as primary key values, that should be applied to the instance before returning it.
@@ -48,7 +48,7 @@ public class Temporal<T>
     {
         writer.WriteStartObject();
 
-        foreach (var entry in pendingChanges)
+        foreach (var entry in PendingChanges)
         {
             // Write the date as the key
             writer.WritePropertyName(entry.Key.ToString("yyyy-MM-dd"));
@@ -76,7 +76,7 @@ public class Temporal<T>
     /// that buffer only.</remarks>
     public void DeserializePendingChanges(ref Utf8JsonReader reader)
     {
-        pendingChanges.Clear();
+        PendingChanges.Clear();
 
         while (reader.Read())
         {
@@ -101,7 +101,7 @@ public class Temporal<T>
                 changes[propertyPath] = value;
             }
 
-            pendingChanges[pointInTime] = changes;
+            PendingChanges[pointInTime] = changes;
         }
     }
     
@@ -117,15 +117,15 @@ public class Temporal<T>
     {
         var (propertyName, _) = DotNotation.ToDotNotation(property);
 
-        if (!pendingChanges.TryGetValue(pointInTime, out var pointInTimeChanges))
-            pendingChanges[pointInTime] = pointInTimeChanges = new Dictionary<string, object?>();
+        if (!PendingChanges.TryGetValue(pointInTime, out var pointInTimeChanges))
+            PendingChanges[pointInTime] = pointInTimeChanges = new Dictionary<string, object?>();
 
         pointInTimeChanges[propertyName] = value;
 
         if (!clearFutureChanges)
             return;
 
-        var clonedList = pendingChanges
+        var clonedList = PendingChanges
             .OrderBy(kp => kp.Key)
             .Where(kp => kp.Key > pointInTime && kp.Value.ContainsKey(propertyName))
             .ToArray();
@@ -134,7 +134,7 @@ public class Temporal<T>
         {
             changes.Value.Remove(propertyName);
             if (changes.Value.Count == 0)
-                pendingChanges.Remove(changes.Key);
+                PendingChanges.Remove(changes.Key);
         }
     }
 
@@ -150,7 +150,7 @@ public class Temporal<T>
         var (propertyName, _) = DotNotation.ToDotNotation(property);
 
         // Use binary search by leveraging SortedDictionary
-        foreach (var entry in pendingChanges.Reverse())
+        foreach (var entry in PendingChanges.Reverse())
         {
             if (entry.Key <= pointInTime && entry.Value.TryGetValue(propertyName, out var value))
                 return (R?)value;
@@ -173,7 +173,7 @@ public class Temporal<T>
         var latestPropertyValues = new Dictionary<string, object?>();
 
         // Get all the changes that occurred up to the given point in time
-        var changesToApply = pendingChanges
+        var changesToApply = PendingChanges
             .Where(entry => entry.Key <= pointInTime)
             .OrderByDescending(entry => entry.Key)  // Sort by descending to get the latest changes first
             .SelectMany(entry => entry.Value)
@@ -210,7 +210,7 @@ public class Temporal<T>
         var latestPropertyValues = new Dictionary<string, object?>();
 
         // Get all the changes that occurred up to the given point in time
-        var changesToApply = pendingChanges
+        var changesToApply = PendingChanges
             .Where(entry => entry.Key <= pointInTime)
             .OrderByDescending(entry => entry.Key)  // Sort by descending to get the latest changes first
             .SelectMany(entry => entry.Value)
@@ -225,19 +225,19 @@ public class Temporal<T>
             }
         }
 
-        foreach (var key in pendingChanges.Keys.Where(k => k <= pointInTime).ToArray())
+        foreach (var key in PendingChanges.Keys.Where(k => k <= pointInTime).ToArray())
         {
-            pendingChanges.Remove(key);
+            PendingChanges.Remove(key);
         }
         
-        pendingChanges.Add(default, new());
+        PendingChanges.Add(default, new());
         
         foreach (var change in latestPropertyValues)
         {
             if (DefaultValueComparer.IsDefaultValue(change.Value, true))
                 continue;
             
-            pendingChanges[default][change.Key] = change.Value;
+            PendingChanges[default][change.Key] = change.Value;
         }
     }
 
