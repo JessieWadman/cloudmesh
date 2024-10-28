@@ -191,7 +191,14 @@ public class Temporal<T>
         // Apply each unique property change to the instance
         foreach (var change in latestPropertyValues)
         {
-            DotNotation.SetValue(instance!, change.Key, change.Value);  // Use SetValue from previous implementation
+            try
+            {
+                DotNotation.SetValue(instance!, change.Key, change.Value); // Use SetValue from previous implementation
+            }
+            catch (Exception error)
+            {
+                throw new InvalidCastException($"Failed to set property {change.Key} to {change.Value} on {instance}", error);
+            }
         }
 
         // Hook for any logic to be applied before returning the instance
