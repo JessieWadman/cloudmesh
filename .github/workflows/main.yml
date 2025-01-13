@@ -40,12 +40,9 @@ jobs:
     - name: Build all in release mode
       run: dotnet build CloudMesh.sln -c Release /p:CI=true /p:Version=$VERSION
 
-    - name: Install Nuget
-      uses: nuget/setup-nuget@v2
-      with:
-        nuget-api-key: ${{secrets.NUGET_KEY}}
-        nuget-version: '5.x'
-        
     - name: Publish
-      run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -SkipDuplicate -ApiKey ${{secrets.NUGET_KEY}}
+      run: dotnet nuget push **\*.nupkg \
+        --source 'https://api.nuget.org/v3/index.json' \
+        --skip-duplicate \
+        --api-key ${{secrets.NUGET_KEY}}
     
