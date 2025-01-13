@@ -26,7 +26,7 @@ jobs:
         dotnet-version: '9.0.x'        
 
     - name: Set version
-      run: echo "VERSION=2.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+      run: echo "VERSION=2.0.$GITHUB_RUN_NUMBER-preview" >> $GITHUB_ENV
 
     - name: Print version
       run: echo "Building $VERSION"
