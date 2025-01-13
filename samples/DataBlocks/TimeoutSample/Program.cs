@@ -5,6 +5,7 @@ using CloudMesh.DataBlocks;
 
 using var stopApplication = new CancellationTokenSource();
 await using var idleTimeout = new IdleTimeout(stopApplication);
+
 try
 {
     await Task.Delay(TimeSpan.FromSeconds(50), stopApplication.Token);

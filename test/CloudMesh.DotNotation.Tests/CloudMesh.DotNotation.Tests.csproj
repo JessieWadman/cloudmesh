@@ -6,11 +6,12 @@
         <IsPackable>false</IsPackable>
         <LangVersion>preview</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-        <Optimize>true</Optimize>
-        <TargetFramework>net8.0</TargetFramework>
+        <Optimize>true</Optimize>        
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="System.Net.Http" />
+        <PackageReference Include="System.Text.RegularExpressions" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" />
         <PackageReference Include="xunit" />
         <PackageReference Include="xunit.runner.visualstudio">

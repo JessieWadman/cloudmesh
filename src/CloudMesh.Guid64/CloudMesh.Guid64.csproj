@@ -8,11 +8,7 @@
         <Description>Roughly time-sortable 64 bit Guid based on Twitter's Snowflake algorithm</Description>
     </PropertyGroup>
 
-    <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <ItemGroup>
         <PackageReference Include="System.IO.Hashing" />
-    </ItemGroup>
-
-    <ItemGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'net7.0'">
-        <ProjectReference Include="..\CloudMesh.MurmurHash\CloudMesh.MurmurHash.csproj" />
     </ItemGroup>
 </Project>
