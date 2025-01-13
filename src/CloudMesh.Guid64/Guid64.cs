@@ -2,12 +2,7 @@
 using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
-
-#if (NET8_0_OR_GREATER)
-    using System.IO.Hashing;
-#else
-    using CloudMesh.Utils;
-#endif
+using System.IO.Hashing;
 
 namespace System
 {
@@ -117,10 +112,11 @@ namespace System
                     var mac = networkInterface.GetPhysicalAddress().GetAddressBytes();
                     buffer.Write(mac);
                 }
-#if (NET8_0_OR_GREATER)
-                nodeId = unchecked((int)XxHash32.HashToUInt32(buffer.WrittenSpan));
+#if (NET9_0_OR_GREATER)
+                var nodeHash = XxHash32.Hash(buffer.WrittenSpan);
+                nodeId = BitConverter.ToInt32(nodeHash);
 #else
-                nodeId = MurmurHash.ByteHash(buffer.WrittenSpan.ToArray());  
+                nodeId = unchecked((int)XxHash32.HashToUInt32(buffer.WrittenSpan));
 #endif
             }
 #pragma warning disable CA1031 // Do not catch general exception types

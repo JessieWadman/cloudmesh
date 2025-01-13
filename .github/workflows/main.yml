@@ -9,7 +9,7 @@ env:
 
 jobs:
   publish:
-    name: Build & Test & Publish
+    name: Test dotnet 9.0
     runs-on: ubuntu-latest
     steps:
       
@@ -19,20 +19,20 @@ jobs:
       #     dotnet-version: 3.1.200
 
     - name: Checkout code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v4
       
-    - uses: actions/setup-dotnet@v3
+    - uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'        
+        dotnet-version: '9.0.x'        
 
     - name: Set version
-      run: echo "VERSION=1.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+      run: echo "VERSION=2.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
 
     - name: Print version
       run: echo "Building $VERSION"
 
     - name: Test
-      run: dotnet test
+      run: dotnet test -f net9.0
 
     - name: Clean
       run: dotnet clean

@@ -5,8 +5,8 @@ on:
       - 'main'
     
 jobs:
-  publish:
-    name: Build & Test
+  tests-dotnet8:
+    name: Test dotnet 8.0
     runs-on: ubuntu-latest
     steps:
       
@@ -16,26 +16,37 @@ jobs:
       #     dotnet-version: 3.1.200
 
     - name: Checkout code
-      uses: actions/checkout@v1
+      uses: actions/checkout@v4
 
-    - uses: actions/setup-dotnet@v3
+    - uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '8.0.x'
+        dotnet-version: '9.0.x'
 
     - name: Set version
       run: echo "VERSION=1.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
 
-    - name: Print version
-      run: echo "Building $VERSION"
-    
     - name: Test
-      run: dotnet test
+      run: dotnet test -f net8.0
+      
+  tests-dotnet9:
+    name: Test dotnet 9.0
+    runs-on: ubuntu-latest
+    steps:
+      
+      # - name: Setup dotnet
+      #   uses: actions/setup-dotnet@v1
+      #   with:
+      #     dotnet-version: 3.1.200
 
-    - name: Clean
-      run: dotnet clean
+      - name: Checkout code
+        uses: actions/checkout@v1
 
-    - name: Build all in release mode
-      run: dotnet build CloudMesh.sln -c Release /p:CI=true /p:Version=$VERSION
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
 
-    - name: Publish
-      run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -SkipDuplicate -ApiKey ${{secrets.NUGET_KEY}}
+      - name: Set version
+        run: echo "VERSION=1.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+
+      - name: Test
+        run: dotnet test -f net9.0

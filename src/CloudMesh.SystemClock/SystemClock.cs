@@ -24,6 +24,11 @@
 #endif
     public class SystemClock : ISystemClock
     {
+        public SystemClock()
+        {
+            throw new NotSupportedException("The ISystemClock is no longer supported. Use .NET built-in TimeProvider instead");
+        }
+        
         public DateTimeOffset NowWithOffset => DateTimeOffset.Now;
         public DateTime UtcNow => DateTime.UtcNow;
     }
@@ -33,6 +38,11 @@
 #endif
     public class MockSystemClock : ISystemClock
     {
+        public MockSystemClock()
+        {
+            throw new NotSupportedException("The ISystemClock is no longer supported. Use .NET built-in TimeProvider instead");
+        }
+        
         public DateTimeOffset NowWithOffset => UtcNow;
         public DateTime UtcNow { get; set; } = DateTime.UtcNow;
         public DateOnly UtcToday => DateOnly.FromDateTime(UtcNow);
@@ -50,14 +60,15 @@ namespace Microsoft.Extensions.DependencyInjection
 #endif
         public static IServiceCollection AddSystemClock(this IServiceCollection services)
         {
-            services.AddSingleton<ISystemClock, SystemClock>();
-            return services;
+            throw new NotSupportedException("The ISystemClock is no longer supported. Use .NET built-in TimeProvider instead");
         }
 
 #if (NET8_0_OR_GREATER)
-    [Obsolete("Use .NET built-in TimeProvider instead")]
+        [Obsolete("Use .NET built-in TimeProvider instead")]
 #endif
         public static ISystemClock GetSystemClock(this IServiceProvider services)
-            => services.GetRequiredService<ISystemClock>() ?? throw new InvalidOperationException("System clock is not registered");
+        {
+            throw new NotSupportedException("The ISystemClock is no longer supported. Use .NET built-in TimeProvider instead");
+        }
     }
 }

@@ -9,6 +9,14 @@ namespace CloudMesh.DataBlocks
 {
     public sealed class Any { }
 
+    public sealed class Timeout
+    {
+        public static readonly Timeout Instance = new();
+        private Timeout()
+        {
+        }
+    }
+
     public class Envelope
     {
         private static long messageCounter;
@@ -54,19 +62,21 @@ namespace CloudMesh.DataBlocks
         private readonly Channel<Envelope> inbox;
         private readonly HashSet<IDataBlock> children = new();
         private readonly Dictionary<Type, Func<object, ValueTask<bool>>> handlers = new();
+        private Func<ValueTask>? timeoutHandler = null;
+        private ICancelable? timeoutTimer;
+        
         private readonly Task completion;
         private readonly CancellationTokenSource stoppingTokenSource = new();
         protected CancellationToken StoppingToken => stoppingTokenSource.Token;
         private bool completed;
         protected bool Stopping { get; private set; }
         
-        private TimeSpan? idleTimeout;
-
         public string Name { get; private set; }
         public IDataBlockRef Parent { get; private set; }
         protected IDataBlockRef? Sender { get; private set; }
 
-        private string path;
+        private string? path;
+        
         public string Path
         {
             get
@@ -156,6 +166,9 @@ namespace CloudMesh.DataBlocks
         public void Become(Action behavior)
         {
             handlers.Clear();
+            timeoutTimer?.Cancel();
+            timeoutHandler = null;
+            
             behavior();
         }
 
@@ -196,18 +209,46 @@ namespace CloudMesh.DataBlocks
                 return true;
             };
         }
+        
+        protected void ReceiveTimeoutAsync(Func<ValueTask> handler)
+        {
+            timeoutHandler = handler;
+        }
+        
+        protected void ReceiveTimeout(Action handler)
+        {
+            ReceiveTimeoutAsync(() =>
+            {
+                handler();
+                return ValueTask.CompletedTask;
+            });
+        }
 
         protected virtual ValueTask BeforeStart() => TaskHelper.CompletedTask;
         protected virtual ValueTask AfterStop() => TaskHelper.CompletedTask;
 
         protected void SetIdleTimeout(TimeSpan? idleTimeout)
         {
-            this.idleTimeout = idleTimeout;
+            timeoutTimer?.Cancel();
+            timeoutTimer = null;
+            
+            if (idleTimeout.HasValue)
+            {
+                timeoutTimer = DataBlockScheduler.ScheduleTellOnceCancelable(this, idleTimeout.Value, Timeout.Instance, this);
+            }
         }
 
         private async Task RunAsync()
         {
-            await BeforeStart();
+            try
+            {
+                await BeforeStart();
+            }
+            catch (Exception error)
+            {
+                Console.Error.WriteLine("Unhandled exception in BeforeStart of {0}: {1}", Path, error);
+                return;
+            }
 
             var hasAnyHandler = handlers.TryGetValue(typeof(Any), out var anyHandler);
 
@@ -215,25 +256,40 @@ namespace CloudMesh.DataBlocks
             {
                 try
                 {
-                    await foreach (var item in inbox.Reader.ReadAllAsync(idleTimeout))
+                    // You must call Stop on the block to gracefully exit an application
+                    await foreach (var item in inbox.Reader.ReadAllAsync(
+                                       null, CancellationToken.None))
                     {
-                        if (item.Message is null)
+                        if ((object?)item.Message is null)
                             continue;
 
-                        Sender = item.Sender;
+                        if (item.Message is Timeout)
+                        {
+                            if (timeoutHandler != null)
+                                await timeoutHandler.Invoke();
+                            else
+                            {
+                                Stop();
+                                continue;
+                            }
+                        }
 
+                        Sender = item.Sender;
                         var messageType = item.Message.GetType();
+                        
                         if (!TryGetHandler(messageType, out var handler) || handler is null)
                         {
                             try
                             {
                                 Unhandled(item);
                             }
-                            catch { }
+                            catch
+                            {
+                            }
                         }
                         else
                         {
-                            bool success = false;
+                            var success = false;
                             try
                             {
                                 var handlerOp = handler(item.Message);
@@ -247,25 +303,32 @@ namespace CloudMesh.DataBlocks
                                 Stop();
                                 Console.WriteLine($"UNHANDLED EXCEPTION IN {Path}: {ex}");
                             }
+
                             if (!success)
                             {
                                 try
                                 {
                                     Unhandled(item);
                                 }
-                                catch { }
+                                catch
+                                {
+                                }
                             }
                         }
                     }
+
                     break;
                 }
-                catch (TimeoutException)
+                catch (Exception error)
                 {
+                    Console.Error.WriteLine("Unhandled exception in {0}: {1}", Path, error);
                     Stop();
                 }
             }
 
             await AfterStop();
+            
+            return;
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             bool TryGetHandler(Type messageType, out Func<object, ValueTask<bool>>? handler)
@@ -298,16 +361,15 @@ namespace CloudMesh.DataBlocks
 
         public void RemoveChild(IDataBlock child)
         {
-            if (children.Contains(child))
-                children.Remove(child);
+            children.Remove(child);
         }
 
-        private AsyncLock stopLocker = new();
+        private readonly AsyncLock stopLocker = new();
 
         public async ValueTask StopAsync()
         {
             Stopping = true;
-            using var _ = await stopLocker.LockAsync();
+            using var _ = await stopLocker.LockAsync(CancellationToken.None);
             if (completed)
                 return;
 
@@ -329,7 +391,7 @@ namespace CloudMesh.DataBlocks
             // Stop all children
             var stopChildren = snapshot
                 .ToArray() // Force copy of enumeration so it can be modified during stopping 
-                .Where(c => c != null)
+                .Where(c => (IDataBlock?)c != null)
                 .Select(c => c.StopAsync())
                 .ToArray();
             await TaskHelper.WhenAll(stopChildren);
@@ -387,7 +449,10 @@ namespace CloudMesh.DataBlocks
 
         public void Dispose()
         {
-            DisposeAsync().GetAwaiter().GetResult();
+            var dispose = DisposeAsync();
+            if (dispose.IsCompleted)
+                return;
+            dispose.AsTask().Wait(CancellationToken.None);
         }
     }
 }

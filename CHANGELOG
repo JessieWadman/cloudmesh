@@ -1,0 +1,9 @@
+# v2.0.1
+
+- Feature: Added timeout handling to DataBlock. See the examples/DataBlocks/TimeoutSample for more information.
+- Deprecation: Dropped support for dotnet 6.0 and 7.0. 
+- Deprecation: Dropped support for ISystemClock and its implementations in favor of native BCL TimeProvider. They had been marked as obsolete since the release of dotnet 8.0.
+- Dependency: Updated dependencies to more recent versions due to security vulnerabilities:
+  - System.Text.Json: At least 9.0.0
+  - System.Net.Http: At least 4.3.4
+  - System.Text.RegularExpressions: At least 4.3.1

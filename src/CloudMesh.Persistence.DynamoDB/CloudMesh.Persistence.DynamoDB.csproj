@@ -18,8 +18,4 @@
 	  <ProjectReference Include="..\CloudMesh.Guid64\CloudMesh.Guid64.csproj" />
 	  <ProjectReference Include="..\CloudMesh.MurmurHash\CloudMesh.MurmurHash.csproj" />	  
 	</ItemGroup>
-
-	<ItemGroup Condition="'$(TargetFramework)' == 'net6.0' or '$(TargetFramework)' == 'net7.0'">
-		<ProjectReference Include="..\CloudMesh.SystemClock\CloudMesh.SystemClock.csproj" />
-	</ItemGroup>
 </Project>
