@@ -41,8 +41,5 @@ jobs:
       run: dotnet build CloudMesh.sln -c Release /p:CI=true /p:Version=$VERSION
 
     - name: Publish
-      run: dotnet nuget push **\*.nupkg \
-        --source 'https://api.nuget.org/v3/index.json' \
-        --skip-duplicate \
-        --api-key ${{secrets.NUGET_KEY}}
+      run: dotnet nuget push **\*.nupkg --source 'https://api.nuget.org/v3/index.json' --skip-duplicate --api-key ${{secrets.NUGET_KEY}}
     
