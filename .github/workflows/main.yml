@@ -9,7 +9,7 @@ env:
 
 jobs:
   publish:
-    name: Test dotnet 9.0
+    name: Publish
     runs-on: ubuntu-latest
     steps:
       
@@ -40,6 +40,12 @@ jobs:
     - name: Build all in release mode
       run: dotnet build CloudMesh.sln -c Release /p:CI=true /p:Version=$VERSION
 
+    - name: Install Nuget
+      uses: nuget/setup-nuget@v2
+      with:
+        nuget-api-key: ${{secrets.NUGET_KEY}}
+        nuget-version: '5.x'
+        
     - name: Publish
       run: nuget push **\*.nupkg -Source 'https://api.nuget.org/v3/index.json' -SkipDuplicate -ApiKey ${{secrets.NUGET_KEY}}
     
