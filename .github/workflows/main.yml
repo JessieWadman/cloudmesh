@@ -3,6 +3,8 @@ on:
   push:
     branches:
       - main # Default release branch, may also be named 'master' or 'develop'
+  workflow_dispatch: 
+    
 env:
   DOTNET_SYSTEM_CONSOLE_ALLOW_ANSI_COLOR_REDIRECTION: 1
   TERM: xterm
