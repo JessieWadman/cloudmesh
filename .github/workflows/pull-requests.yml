@@ -6,7 +6,7 @@ on:
     
 jobs:
   tests-dotnet8:
-    name: Build & Test
+    name: Test dotnet 8.0
     runs-on: ubuntu-latest
     steps:
       
@@ -29,7 +29,7 @@ jobs:
       run: dotnet test -f net8.0
       
   tests-dotnet9:
-    name: Build & Test
+    name: Test dotnet 9.0
     runs-on: ubuntu-latest
     steps:
       

@@ -34,7 +34,7 @@ public class MemoryStreamAccessorTests
 
     public class MemoryStreamAccessorBenchmarks
     {
-        private static readonly byte[] TestString = Encoding.UTF8.GetBytes("Hello wonderful world");
+        private static readonly byte[] TestString = "Hello wonderful world"u8.ToArray();
         
         [Benchmark]
         public void ToArray()
