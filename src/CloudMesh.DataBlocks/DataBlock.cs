@@ -373,6 +373,9 @@ namespace CloudMesh.DataBlocks
             if (completed)
                 return;
 
+            // Notify long-running code that we are stopping
+            await stoppingTokenSource.CancelAsync();
+
             // Stop inbox from receiving more messages
             inbox.Writer.Complete();
 
@@ -445,7 +448,11 @@ namespace CloudMesh.DataBlocks
         }
 
 
-        protected virtual void Dispose(bool disposeManagedResources) { }
+        protected virtual void Dispose(bool disposeManagedResources)
+        {
+            if (disposeManagedResources)
+                stoppingTokenSource.Dispose();
+        }
 
         public void Dispose()
         {
