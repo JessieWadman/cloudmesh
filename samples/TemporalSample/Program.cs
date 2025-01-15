@@ -1,55 +1,57 @@
 ﻿using System.Text.Json;
 using CloudMesh.Temporal;
 
-var post = new Employee();
+var employee = new Employee();
 
-var when = new DateOnly(2019, 12, 01);
+// Set initial values for the employee. Point in time here is 0000-01-01
+employee.Set(pointInTime: default, e => e.Name, "Bob");
+employee.Set(pointInTime: default, p => p.Attrib3, default);
 
-post.Set(default, e => e.Name, "Bob");
-post.Set(default, p => p.Attrib3, default);
+// Set values for the employee at different points in time
+var pointInTime = new DateOnly(2019, 12, 01);
+employee.Set(pointInTime, p => p.Roles[0].Name, "Accountant");
+employee.Set(pointInTime, p => p.Contacts["Email"], "bob@domain.com");
+employee.Set(pointInTime, p => p.Addresses["Home"].Street, "1 CloudMesh way");
+employee.Set(pointInTime, p => p.Addresses["Home"].City, "Stockholm");
 
-post.Set(when, p => p.Roles[0].Name, "Accountant");
-post.Set(when, p => p.Contacts["Email"], "bob@domain.com");
-post.Set(when, p => p.Addresses["Home"].Street, "1 CloudMesh way");
-post.Set(when, p => p.Addresses["Home"].City, "Stockholm");
+pointInTime = new DateOnly(2025, 12, 01);
+employee.Set(pointInTime, p => p.Contacts["Email"], "bob@bob.com");
 
-when = new DateOnly(2025, 12, 01);
-post.Set(when, p => p.Contacts["Email"], "bob@bob.com");
+// This will replace the previous one before it occurs (because this is earlier in time).  
+pointInTime = new DateOnly(2025, 10, 01);
+// This replaces 'bob@bob.com' above
+employee.Set(pointInTime, p => p.Contacts["Email"], "bob@upgraded.com");
+employee.Set(pointInTime, p => p.Attrib1, null);
+employee.Set(pointInTime, p => p.Attrib2, default);
 
-// This will replace the previous one before it occurs earlier in time, and we have the flag by default set
-// to clear any future, pending changes to the property being set.  
-when = new DateOnly(2025, 10, 01);
-post.Set(when, p => p.Contacts["Email"], "bob@upgraded.com");
-post.Set(when, p => p.Attrib1, null);
-post.Set(when, p => p.Attrib2, default);
+pointInTime = new DateOnly(2025, 12, 01);
 
-when = new DateOnly(2025, 12, 01);
+var final = employee.GetAt(pointInTime);
 
-var final = post.GetAt(when);
 Console.WriteLine(JsonSerializer.Serialize(final));
 
 // Expected: 3 points in time
 //      0000-01-01
 //      2019-12-01
 //      2025-12-01
-Console.WriteLine($"Employee has {post.GetPointInTimes().Count()} points in time.");
+Console.WriteLine($"Employee has {employee.GetPointInTimes().Count()} points in time.");
 
-when = new DateOnly(2025, 11, 01);
-post.ReduceTo(when);
-Console.WriteLine($"Employee has {post.GetPointInTimes().Count()} points in time.");
+pointInTime = new DateOnly(2025, 11, 01);
+employee.ReduceTo(pointInTime);
+Console.WriteLine($"Employee has {employee.GetPointInTimes().Count()} points in time.");
 
-public class Employee : Temporal<EmployeeSnapshot>
+internal class Employee : Temporal<EmployeeSnapshot>
 {
     public int Id { get; set; }
 
     protected override void BeforeReturnSnapshot(EmployeeSnapshot snapshot, DateOnly pointInTime)
     {
-        // Time property is not temporal, it's constant.
+        // This property is not temporal, it's always constant, which is why we pass it through.
         snapshot.Id = this.Id;
     }
 }
 
-public class EmployeeSnapshot
+internal class EmployeeSnapshot
 {
     public int Id { get; set; }
     public string Name { get; set; } = null!;
@@ -62,13 +64,12 @@ public class EmployeeSnapshot
     public List<JobRole> Roles { get; set; } = null!;
 }
 
-public class JobRole
+internal class JobRole
 {
     public string Name { get; set; } = null!;
-    
 }
 
-public class Address
+internal class Address
 {
     public string Street { get; set; } = null!;
     public string City { get; set; } = null!;
