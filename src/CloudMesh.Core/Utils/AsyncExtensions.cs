@@ -17,6 +17,37 @@ namespace System
         
         public static async Task<T[]> ToArrayAsync<T>(this IAsyncEnumerable<T> enumerable)
             => (await ToListAsync(enumerable)).ToArray();
+        
+        public static async IAsyncEnumerable<T> Skip<T>(this IAsyncEnumerable<T> source, int count)
+        {
+            var itemsSkipped = 0;
+            var taking = false;
+            
+            // Warning! Dragons ahead!
+            
+            // We only count up to count items, and then set a flag to start taking.
+            
+            // The more readable approach would be to just check
+            //      if (++itemsSkipped > count) yield return item;
+            
+            // At first glance that seems simpler, but(!) then we would have to be careful about
+            // overflow, as we could be counting past int.MaxValue and accidentally start skipping again.
+            // If source for example contains int.MaxValue + 5 items, and we call this with Skip(1), we would
+            // skip the 1s item, and then start taking, and again skip int.MaxValue + 1 because counter got 
+            // overflowed.
+            
+            await foreach (var item in source)
+            {
+                if (taking)
+                    yield return item;
+
+                if (++itemsSkipped <= count) 
+                    continue;
+                
+                taking = true;
+                yield return item;
+            }
+        }
 
         public static async IAsyncEnumerable<T> Take<T>(this IAsyncEnumerable<T> source, int count)
         {
@@ -159,13 +190,14 @@ namespace System
             {
                 return ((Task)value).ContinueWith(t => (object?)((dynamic)t).Result);
             }
+
             if (typeof(ValueTask).IsAssignableFrom(valueType))
             {
                 var task = (Task)((dynamic)value).AsTask();
                 return task.ContinueWith(t => (object?)((dynamic)t).Result);
             }
-            else
-                return Task.FromResult((object?)value);
+
+            return Task.FromResult((object?)value);
         }
     }
 }

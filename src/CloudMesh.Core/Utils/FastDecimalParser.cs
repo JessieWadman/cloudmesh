@@ -14,7 +14,8 @@ namespace System
     {
         private const int MaxDecimalLength = 29 + 1 + 29 + 9; // 29 integral digits, decimal separator, 28-29 decimal digits and 9 group separators
 
-        private static readonly int[] PowerOf10 = {
+        private static readonly int[] PowerOf10 =
+        [
             1,
             10,
             100,
@@ -25,7 +26,7 @@ namespace System
             10000000,
             100000000,
             1000000000
-        };
+        ];
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool FastTryParseDecimal(ReadOnlySpan<char> value, DecimalSeparators separators, out decimal parsedValue)

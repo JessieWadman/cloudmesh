@@ -14,20 +14,20 @@ namespace CloudMesh.Threading
         where TKey : notnull
     {
         private readonly SemaphoreSlim globalConcurrencySemaphore;
-        private readonly SemaphoreSlim globalDelaySemaphore;
-        private readonly int globalDelay;
-        private readonly int perKeyDelay;
-        private readonly ConcurrentDictionary<TKey, SemaphoreSlim> perKeyDelaySemaphores;
+        private readonly SemaphoreSlim globalRateSemaphore;
+        private readonly int globalRate;
+        private readonly int perKeyRate;
+        private readonly ConcurrentDictionary<TKey, SemaphoreSlim> perKeyRateSemaphores;
         private bool disposed;
 
-        public Throttler(int globalConcurrencyLimit, int globalDelay, int perKeyDelay)
+        public Throttler(int globalConcurrencyLimit, int globalRate, int perKeyRate)
         {
             globalConcurrencySemaphore = new SemaphoreSlim(globalConcurrencyLimit,
                  globalConcurrencyLimit);
-            globalDelaySemaphore = new SemaphoreSlim(1, 1);
-            this.globalDelay = globalDelay;
-            this.perKeyDelay = perKeyDelay;
-            perKeyDelaySemaphores = new ConcurrentDictionary<TKey, SemaphoreSlim>();
+            globalRateSemaphore = new SemaphoreSlim(1, 1);
+            this.globalRate = globalRate;
+            this.perKeyRate = perKeyRate;
+            perKeyRateSemaphores = new ConcurrentDictionary<TKey, SemaphoreSlim>();
         }
 
         public void Dispose()
@@ -35,8 +35,8 @@ namespace CloudMesh.Threading
             disposed = true;
             Thread.Sleep(1);
             globalConcurrencySemaphore.Dispose();
-            globalDelaySemaphore.Dispose();
-            foreach (var ks in perKeyDelaySemaphores.Values)
+            globalRateSemaphore.Dispose();
+            foreach (var ks in perKeyRateSemaphores.Values)
                 ks.Dispose();
             GC.SuppressFinalize(this);
         }
@@ -44,17 +44,16 @@ namespace CloudMesh.Threading
         public async Task<ThrottleCallResult<TResult>> ExecuteAsync<TResult>(TKey key,
             Func<TKey, Task<TResult>> taskFactory)
         {
-            if (disposed)
-                throw new ObjectDisposedException(GetType().Name);
+            ObjectDisposedException.ThrowIf(disposed, this);
 
             var startWaiting = Environment.TickCount64;
 
-            var perKeyDelaySemaphore = perKeyDelaySemaphores.GetOrAdd(
+            var perKeyRateSemaphore = perKeyRateSemaphores.GetOrAdd(
                 key, _ => new SemaphoreSlim(1, 1));
-            await perKeyDelaySemaphore.WaitAsync().ConfigureAwait(false);
-            ReleaseAsync(perKeyDelaySemaphore, perKeyDelay);
-            await globalDelaySemaphore.WaitAsync().ConfigureAwait(false);
-            ReleaseAsync(globalDelaySemaphore, globalDelay);
+            await perKeyRateSemaphore.WaitAsync().ConfigureAwait(false);
+            ReleaseAsync(perKeyRateSemaphore, perKeyRate);
+            await globalRateSemaphore.WaitAsync().ConfigureAwait(false);
+            ReleaseAsync(globalRateSemaphore, globalRate);
             await globalConcurrencySemaphore.WaitAsync().ConfigureAwait(false);
 
             try

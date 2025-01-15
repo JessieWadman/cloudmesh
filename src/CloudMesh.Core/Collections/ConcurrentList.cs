@@ -26,7 +26,7 @@ public class ConcurrentList<T> : IList<T>, IDisposable
     }
 
     #region Methods
-    
+
     public void Add(T item)
     {
         try
@@ -78,7 +78,7 @@ public class ConcurrentList<T> : IList<T>, IDisposable
             this._lock.ExitWriteLock();
         }
     }
-    
+
     public void RemoveAt(IEnumerable<int> indexes)
     {
         try
@@ -172,9 +172,11 @@ public class ConcurrentList<T> : IList<T>, IDisposable
 
         this._lock.Dispose();
     }
+
     #endregion
 
     #region Properties
+
     public T this[int index]
     {
         get
@@ -224,23 +226,28 @@ public class ConcurrentList<T> : IList<T>, IDisposable
     #endregion
 }
 
-    public class ConcurrentEnumerator<T> : IEnumerator<T>
+public class ConcurrentEnumerator<T> : IEnumerator<T>
 {
     #region Fields
+
     private readonly IEnumerator<T> _inner;
     private readonly ReaderWriterLockSlim _lock;
+
     #endregion
 
     #region Constructor
+
     public ConcurrentEnumerator(IEnumerable<T> inner, ReaderWriterLockSlim @lock)
     {
         this._lock = @lock;
         this._lock.EnterReadLock();
         this._inner = inner.GetEnumerator();
     }
+
     #endregion
 
     #region Methods
+
     public bool MoveNext()
     {
         return _inner.MoveNext();
@@ -255,9 +262,11 @@ public class ConcurrentList<T> : IList<T>, IDisposable
     {
         this._lock.ExitReadLock();
     }
+
     #endregion
 
     #region Properties
+
     public T Current
     {
         get { return _inner.Current; }

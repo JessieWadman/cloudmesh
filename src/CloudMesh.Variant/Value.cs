@@ -7,7 +7,7 @@ namespace CloudMesh.Variant;
 
 /// <summary>
 /// The main point of this struct is to prevent boxing of value types when setting them aside in an array or passing
-/// them as arguments to methods. In order to gather up arbitrary value types, it's common to use an object array
+/// them as arguments to methods. In order to gather arbitrary value types, it's common to use an object array
 /// for the purpose, like so:
 /// 
 /// object?[] values = new object?[n];
@@ -611,11 +611,11 @@ public readonly partial struct Value
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly unsafe bool TryGetValue<T>(out T value)
+    public readonly bool TryGetValue<T>(out T value)
     {
         bool success;
 
-        // Checking the type gets all of the non-relevant compares elided by the JIT
+        // Checking the type gets all the non-relevant compares elided by the JIT
         if (_object is not null && ((typeof(T) == typeof(bool) && _object == TypeFlags.Boolean)
             || (typeof(T) == typeof(byte) && _object == TypeFlags.Byte)
             || (typeof(T) == typeof(char) && _object == TypeFlags.Char)
@@ -792,11 +792,11 @@ public readonly partial struct Value
             value = Unsafe.As<DateTimeOffset?, T>(ref Unsafe.AsRef((DateTimeOffset?)_union.PackedDateTimeOffset.Extract()));
             result = true;
         }
-        else if (Nullable.GetUnderlyingType(typeof(T)) is Type { IsEnum: true } underlyingType
+        else if (Nullable.GetUnderlyingType(typeof(T)) is { IsEnum: true } underlyingType
                  && _object is TypeFlag underlyingTypeFlag
                  && underlyingTypeFlag.Type == underlyingType)
         {
-            // Asked for a nullable enum and we've got that type.
+            // Asked for a nullable enum, and we've got that type.
 
             // We've got multiple layouts, depending on the size of the enum backing field. We can't use the
             // nullable itself (e.g. default(T)) as a template as it gets treated specially by the runtime.

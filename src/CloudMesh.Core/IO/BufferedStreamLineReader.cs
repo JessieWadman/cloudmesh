@@ -4,13 +4,13 @@ using CloudMesh.Memory;
 namespace CloudMesh.IO;
 
 /// <summary>
-/// Optimized, statically allocated, buffered stream reader for text files than can read one line at a time 
+/// Optimized, statically allocated, buffered stream reader for text files than can read one line of text at a time 
 /// </summary>
 public class BufferedStreamLineReader
 {
     private readonly byte delimiter;
     private const int DefaultReadBufferSize = 16 * 1024 * 1024; // 16 MB
-    private const int InitialRemainderBufferSize = 128; // 64 KB
+    private const int InitialRemainderBufferSize = 128;
 
     private Stream? stream;
     private readonly Encoding encoding;

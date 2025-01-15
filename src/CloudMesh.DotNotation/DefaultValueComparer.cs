@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace CloudMesh;
 
-public class DefaultValueComparer
+public static class DefaultValueComparer
 {
     private static readonly ConcurrentDictionary<Type, Func<object?, bool>> defaultValueCheckers = new();
 

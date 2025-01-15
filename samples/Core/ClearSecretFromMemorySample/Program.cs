@@ -1,5 +1,4 @@
-﻿using System.Text;
-using CloudMesh.Utils;
+﻿using CloudMesh.Utils;
 
 // ALWAYS consider using SecureString, when possible.
 // Only ever use this approach if you're dealing with some external dependencies or situations where using SecureString
@@ -11,6 +10,9 @@ using CloudMesh.Utils;
 var password = "MySecretPassword";
 
 // Overwrite the memory that the string points to with blanks, then clear the string pointer.
+// Note that the garbage collector may move the string around in memory, causing copies of it to exist.
+// This is why you should always use SecureString, when possible.
+// This only clears the current copy.
 UnsafeStringOperations.ClearMemory(ref password);
 
 // Password is now empty string.
