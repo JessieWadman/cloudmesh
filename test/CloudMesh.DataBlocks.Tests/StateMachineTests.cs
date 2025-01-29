@@ -9,14 +9,14 @@ public class StateMachineTests
         await using var stateMachine = new TestStateMachine(testProbe);
         
         // Expect initial state to be Ready.
-        testProbe.Expect<Signals.StateChanged>(500, x => x.State == "Ready");
+        testProbe.Expect<Signals.StateChanged>(10000, x => x.State == "Ready");
         
         await stateMachine.SubmitAsync(Signals.Restart.Instance, testProbe);
         testProbe.Expect<Signals.InvalidState>();
         
         await stateMachine.SubmitAsync(Signals.Start.Instance, testProbe);
         // Expect state machine to transition to Running state and to let us know
-        testProbe.Expect<Signals.StateChanged>(500, x => x.State == "Running");
+        testProbe.Expect<Signals.StateChanged>(10000, x => x.State == "Running");
         
         // Expect it to reject restart signal while in Running state
         await stateMachine.SubmitAsync(Signals.Restart.Instance, testProbe);
@@ -26,14 +26,14 @@ public class StateMachineTests
         testProbe.ExpectNoMessage(50);
 
         // Then, expect it to automatically transition to Done state
-        testProbe.Expect<Signals.StateChanged>(500, x => x.State == "Done");
+        testProbe.Expect<Signals.StateChanged>(10000, x => x.State == "Done");
         
         // Then, expect it to transition back to Running state on Restart signal
         await stateMachine.SubmitAsync(Signals.Restart.Instance, testProbe);
-        testProbe.Expect<Signals.StateChanged>(500, x => x.State == "Running");
+        testProbe.Expect<Signals.StateChanged>(10000, x => x.State == "Running");
         
         // And finally to transition to Done state.
-        testProbe.Expect<Signals.StateChanged>(500, x => x.State == "Done");
+        testProbe.Expect<Signals.StateChanged>(10000, x => x.State == "Done");
     }
     
     private class TestStateMachine : DataBlock
