@@ -176,6 +176,14 @@ public abstract class DataBlock :
             
         behavior();
     }
+    
+    protected void Receive<T>(Func<T, bool> handler)
+    {
+        if (typeof(T) == typeof(Any))
+            throw new InvalidOperationException("Use ReceiveAny instead!");
+
+        handlers[typeof(T)] = item => new ValueTask<bool>(handler((T)item));
+    }
 
     protected void ReceiveAsync<T>(Func<T, ValueTask<bool>> handler)
     {
@@ -183,6 +191,18 @@ public abstract class DataBlock :
             throw new InvalidOperationException("Use ReceiveAny instead!");
 
         handlers[typeof(T)] = item => handler((T)item);
+    }
+    
+    protected void Receive<T>(Action<T> handler)
+    {
+        if (typeof(T) == typeof(Any))
+            throw new InvalidOperationException("Use ReceiveAny instead!");
+
+        handlers[typeof(T)] = item =>
+        {
+            handler((T)item);
+            return new(true);
+        };
     }
 
     protected void ReceiveAsync<T>(Func<T, ValueTask> handler)
@@ -203,6 +223,11 @@ public abstract class DataBlock :
     {
         handlers[typeof(Any)] = handler;
     }
+    
+    protected void ReceiveAny(Func<object, bool> handler)
+    {
+        handlers[typeof(Any)] = item => new ValueTask<bool>(handler(item));
+    }
 
     protected void ReceiveAnyAsync(Func<object, ValueTask> handler)
     {
@@ -212,6 +237,15 @@ public abstract class DataBlock :
             if (!op.IsCompleted)
                 await op;
             return true;
+        };
+    }
+    
+    protected void ReceiveAny(Action<object> handler)
+    {
+        handlers[typeof(Any)] = item =>
+        {
+            handler(item);
+            return new(true);
         };
     }
         

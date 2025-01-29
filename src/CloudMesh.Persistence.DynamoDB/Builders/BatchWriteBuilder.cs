@@ -2,7 +2,7 @@
 
 namespace CloudMesh.Persistence.DynamoDB.Builders
 {
-    public interface IBatchWriteBuilder<T>
+    public interface IBatchWriteBuilder<in T>
     {
         IBatchWriteBuilder<T> Save(params T[] items);
         IBatchWriteBuilder<T> Delete(params T[] items);

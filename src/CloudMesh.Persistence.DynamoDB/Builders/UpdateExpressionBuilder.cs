@@ -22,7 +22,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
 
     public interface IUpdateExpressionBuilder { }
 
-    public interface IUpdateExpressionBuilder<TEntity, TBuilder> : IUpdateExpressionBuilder
+    public interface IUpdateExpressionBuilder<TEntity, out TBuilder> : IUpdateExpressionBuilder
         where TBuilder : IUpdateExpressionBuilder
     {
         TBuilder If<R>(Expression<Func<TEntity, R>> property, PatchCondition condition, R value);
@@ -39,12 +39,12 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
     public abstract class UpdateExpressionBuilder<TEntity, TBuilder> : IUpdateExpressionBuilder, IUpdateExpressionBuilder<TEntity, TBuilder>
         where TBuilder : IUpdateExpressionBuilder
     {
-        private int argCounter = 0;
+        private int argCounter;
         private readonly List<string> updateExpressions = new();
         private readonly Dictionary<string, AttributeValue> key;
         private readonly Dictionary<string, AttributeValue> expressionAttributeValues = new();
         private readonly Dictionary<string, string> expressionAttributeNames = new();
-        private string conditionExpression = string.Empty;
+        private string? conditionExpression;
 
         public UpdateExpressionBuilder(Dictionary<string, AttributeValue> key)
         {
@@ -188,7 +188,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
             var values = elements.Select(e => Convert.ToString(e, CultureInfo.InvariantCulture)).ToList();
             expressionAttributeValues[$":{argName}"] = AttributeHelper.ToAttributeValue(elements, propertyInfo);
 
-            // Adding empty list if list does not exist on item yet. Otherwise will throw exception
+            // Adding empty list if list does not exist on item yet. Otherwise, will throw exception
             expressionAttributeValues[$":empty_list"] = new AttributeValue() { IsLSet = true };
             return (TBuilder)(IUpdateExpressionBuilder)this; 
         }
@@ -232,7 +232,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
 
         public (
             string? UpdateExpression,
-            string ConditionExpression,
+            string? ConditionExpression,
             Dictionary<string, AttributeValue> Key,
             Dictionary<string, string> ExpressionAttributeNames,
             Dictionary<string, AttributeValue> ExpressionAttributeValues) Build(bool returnValues)

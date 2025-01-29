@@ -7,7 +7,7 @@
 
     public static class DataBlockScheduler
     {
-        public static void ScheduleTellOnce(ICanSubmit target, TimeSpan delay, object message, IDataBlockRef sender)
+        public static void ScheduleTellOnce(ICanSubmit target, TimeSpan delay, object message, IDataBlockRef? sender)
         {
             _ = Task.Run(async () =>
             {
@@ -16,8 +16,11 @@
                 await target.SubmitAsync(message, sender);
             }).ConfigureAwait(false);
         }
+        
+        public static void ScheduleTellOnce(ICanSubmit target, int delayInMilliseconds, object message, IDataBlockRef? sender)
+            => ScheduleTellOnce(target, TimeSpan.FromMilliseconds(delayInMilliseconds), message, sender);
 
-        public static ICancelable ScheduleTellOnceCancelable(ICanSubmit target, TimeSpan delay, object message, IDataBlockRef sender)
+        public static ICancelable ScheduleTellOnceCancelable(ICanSubmit target, TimeSpan delay, object message, IDataBlockRef? sender)
         {
             var cancellation = new Cancelable();
             var stoppingToken = cancellation.Token;
@@ -41,7 +44,11 @@
             return cancellation;
         }
 
-        public static ICancelable ScheduleTellRepeatedly(ICanSubmit target, TimeSpan frequency, object message, IDataBlockRef sender)
+        public static ICancelable ScheduleTellOnceCancelable(ICanSubmit target, int delayInMilliseconds, object message,
+            IDataBlockRef? sender)
+            => ScheduleTellOnceCancelable(target, TimeSpan.FromMilliseconds(delayInMilliseconds), message, sender);
+
+        public static ICancelable ScheduleTellRepeatedly(ICanSubmit target, TimeSpan frequency, object message, IDataBlockRef? sender)
         {
             var cancellation = new Cancelable();
             var stoppingToken = cancellation.Token;
@@ -67,6 +74,9 @@
 
             return cancellation;
         }
+        
+        public static ICancelable ScheduleTellRepeatedly(ICanSubmit target, int frequencyInMilliseconds, object message, IDataBlockRef? sender)
+            => ScheduleTellRepeatedly(target, TimeSpan.FromMilliseconds(frequencyInMilliseconds), message, sender);
 
         public class Cancelable : ICancelable, IDisposable
         {
