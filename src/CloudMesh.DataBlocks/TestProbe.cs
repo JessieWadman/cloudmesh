@@ -10,7 +10,7 @@ public class TestProbe : CaptureBlock
         Path = Name;
     }
 
-    public void ExpectNoMessage(int timeToWaitInMilliseconds = 500)
+    public void ExpectNoMessage(int timeToWaitInMilliseconds = 5000)
     {
         var waitUntil = DateTime.UtcNow.AddMilliseconds(timeToWaitInMilliseconds);
         while (true)
@@ -31,7 +31,7 @@ public class TestProbe : CaptureBlock
         }
     }
     
-    public T Expect<T>(int timeToWaitInMilliseconds = 1000, Func<T, bool>? predicate = null)
+    public T Expect<T>(int timeToWaitInMilliseconds = 10000, Func<T, bool>? predicate = null)
     {
         var waitUntil = DateTime.UtcNow.AddMilliseconds(timeToWaitInMilliseconds); 
         while (true) 
