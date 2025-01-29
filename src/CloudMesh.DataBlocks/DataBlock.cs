@@ -263,6 +263,11 @@ public abstract class DataBlock :
         });
     }
 
+    protected virtual void UnhandledException(Exception error)
+    {
+        Console.WriteLine($"UNHANDLED EXCEPTION IN {Path}: {error}");
+    }
+
     protected virtual ValueTask BeforeStart() => TaskHelper.CompletedTask;
     protected virtual ValueTask AfterStop() => TaskHelper.CompletedTask;
 
@@ -340,7 +345,13 @@ public abstract class DataBlock :
                         catch (Exception ex)
                         {
                             Stop();
-                            Console.WriteLine($"UNHANDLED EXCEPTION IN {Path}: {ex}");
+                            try
+                            {
+                                UnhandledException(ex);
+                            }
+                            catch
+                            {
+                            }
                         }
 
                         if (!success)
