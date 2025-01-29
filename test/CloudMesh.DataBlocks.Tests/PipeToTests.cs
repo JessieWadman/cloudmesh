@@ -10,7 +10,7 @@ public class PipeToTests
         // Defer execution of lengthy, async work, and pipe the result to the target test probe.
         LengthyStuff.DoSomeLengthyAsyncWork("Hello!").PipeTo(testProbe, null);
 
-        var str = testProbe.Expect<string>(500);
+        var str = testProbe.Expect<string>();
         Assert.Equal("HELLO!", str);
     }
 
@@ -21,7 +21,7 @@ public class PipeToTests
 
         LengthyStuff.DoAsyncWorkAndThrow().PipeTo(testProbe, null);
 
-        var exception = testProbe.Expect<Exception>(500);
+        var exception = testProbe.Expect<Exception>();
 
         Assert.IsType<InvalidOperationException>(exception);
         Assert.Equal("Boo!", exception.Message);
@@ -35,7 +35,7 @@ public class PipeToTests
         var worker = new PipeToTestBlock();
         await worker.SubmitAsync(new PipeToTestBlock.ReverseString("Hello!"), testProbe);
 
-        var str = testProbe.Expect<string>(500);
+        var str = testProbe.Expect<string>();
         Assert.Equal("HELLO!", str);
     }
     

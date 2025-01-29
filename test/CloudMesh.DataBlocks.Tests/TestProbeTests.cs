@@ -1,6 +1,6 @@
 namespace CloudMesh.DataBlocks.Tests;
 
-public class TetsProbeTests
+public class TestProbeTests
 {
     [Fact]
     public async Task WhenExpectedResultIsReceived()
