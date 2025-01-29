@@ -5,7 +5,7 @@ public class StateMachineTests
     [Fact]
     public async Task BehaviorsShouldWork()
     {
-        await using var testProbe = new CaptureBlock();
+        var testProbe = new TestProbe();
         await using var stateMachine = new TestStateMachine(testProbe);
         
         // Expect initial state to be Ready.

@@ -1,11 +1,11 @@
 namespace CloudMesh.DataBlocks.Tests;
 
-public class CaptureBlockTests
+public class TetsProbeTests
 {
     [Fact]
     public async Task WhenExpectedResultIsReceived()
     {
-        await using var testProbe = new CaptureBlock();
+        var testProbe = new TestProbe();
         await using var worker = new Forwarder(testProbe);
         
         DataBlockScheduler.ScheduleTellOnce(worker, 100, "Hello", null);
@@ -17,7 +17,7 @@ public class CaptureBlockTests
     [Fact]
     public async Task WhenWrongResultIsReceived()
     {
-        await using var testProbe = new CaptureBlock();
+        var testProbe = new TestProbe();
         await using var worker = new Forwarder(testProbe);
         
         DataBlockScheduler.ScheduleTellOnce(worker, 100, "Hello", null);
@@ -26,16 +26,16 @@ public class CaptureBlockTests
     }
     
     [Fact]
-    public async Task WhenNoMessageShouldBeReceived()
+    public void WhenNoMessageShouldBeReceived()
     {
-        await using var testProbe = new CaptureBlock();
+        var testProbe = new TestProbe();
         testProbe.ExpectNoMessage();
     }
     
     [Fact]
     public async Task WhenNoMessageIsExpectedButReceived()
     {
-        await using var testProbe = new CaptureBlock();
+        var testProbe = new TestProbe();
         await using var worker = new Forwarder(testProbe);
         
         DataBlockScheduler.ScheduleTellOnce(worker, 100, "Hello", null);

@@ -1,68 +1,43 @@
-﻿using System.Collections.Concurrent;
+﻿namespace CloudMesh.DataBlocks;
 
-namespace CloudMesh.DataBlocks
-{
-    public class CaptureBlock : DataBlock
+public class CaptureBlock : IDataBlockRef 
+{ 
+    protected readonly Queue<object> Messages = new();
+    protected readonly object Locker = new();
+    
+    public IDataBlockRef? Parent => null;
+    public string Name { get; protected set; } = "CaptureBlock";
+    public string Path { get; protected set; } = "CaptureBlock";
+    
+    public ValueTask SubmitAsync(object message, IDataBlockRef? sender) 
+    { 
+        lock (Locker) 
+        { 
+            Messages.Enqueue(message); 
+        } 
+        return ValueTask.CompletedTask; 
+    }
+
+    public bool TrySubmit(object message, IDataBlockRef? sender)
     {
-        private readonly ConcurrentQueue<object> messages = new();
-
-        public CaptureBlock()
-            : base(1)
+        lock (Locker)
+            Messages.Enqueue(message);
+        return true;
+    }
+        
+    public object[] GetAllAndClear() 
+    {
+        lock (Locker)
         {
-            ReceiveAnyAsync(obj =>
-            {
-                messages.Enqueue(obj);
-                return ValueTask.CompletedTask;
-            });
-        }
-
-        public object[] DequeueAll()
-        {
-            var snapshot = messages.ToArray();
-            messages.Clear();
+            var snapshot = Messages.ToArray();
+            Messages.Clear();
             return snapshot;
         }
+    }
 
-        public T Expect<T>(int timeToWaitInMilliseconds = 1000, Func<T, bool>? predicate = null)
-        {
-            var waitUntil =  DateTime.UtcNow.AddMilliseconds(timeToWaitInMilliseconds);
-            while (true)
-            {
-                if (messages.TryDequeue(out var result))
-                {
-                    if (result is T value)
-                    {
-                        if (predicate == null || predicate(value))
-                            return value;
-                        
-                        throw new InvalidOperationException($"Expect message of type {typeof(T).Name} and got one, but the predicate failed.");    
-                    }
-
-                    throw new InvalidOperationException($"Expect message of type {typeof(T).Name} but got {result.GetType().Name}");
-                }
-                
-                Thread.Sleep(10);
-                
-                if (DateTime.UtcNow > waitUntil)
-                    throw new TimeoutException("No message received within the expected time.");
-            }
-        }
-        
-        public void ExpectNoMessage(int timeToWaitInMilliseconds = 500)
-        {
-            var waitUntil =  DateTime.UtcNow.AddMilliseconds(timeToWaitInMilliseconds);
-            while (true)
-            {
-                if (messages.TryDequeue(out var result))
-                {
-                    throw new InvalidOperationException($"Expected no message to be received, but got one of type {result.GetType().Name}");
-                }
-                
-                Thread.Sleep(10);
-
-                if (DateTime.UtcNow >= waitUntil)
-                    return;
-            }
-        }
+    public void Clear()
+    {
+        lock (Locker)
+            Messages.Clear();
     }
 }
