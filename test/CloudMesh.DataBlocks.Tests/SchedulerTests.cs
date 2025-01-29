@@ -11,6 +11,6 @@ public class SchedulerTests
         DataBlockScheduler.ScheduleTellOnce(testProbe, TimeSpan.FromMilliseconds(100), "Hello", null);
         
         testProbe.ExpectNoMessage(80); // No message within 80ms
-        testProbe.Expect<string>(2000); // After those 80ms, we should receive the message within 30ms
+        testProbe.Expect<string>(); // After those 80ms, we should receive the message
     }
 }
