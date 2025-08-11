@@ -100,7 +100,10 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
             }
             else
             {
-                using var client = new DynamoDBContext(new AmazonDynamoDBClient());
+                using var client = new DynamoDBContextBuilder()
+                    .WithDynamoDBClient(() => new AmazonDynamoDBClient())
+                    .Build();
+                
                 var keys = Document
                     .FromJson(JsonSerializer.Serialize(keyValues))
                     .ToAttributeUpdateMap(DynamoDBEntryConversion.V2, false);

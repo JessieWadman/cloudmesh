@@ -18,10 +18,10 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         }
 
         private readonly DynamoDBContext context;
-        private readonly Func<DynamoDBOperationConfig> config;
+        private readonly Func<BatchWriteConfig> config;
         private readonly HashSet<(T Item, BatchWriteOp Action)> items = new();
 
-        public BatchWriteBuilder(DynamoDBContext context, Func<DynamoDBOperationConfig> config)
+        public BatchWriteBuilder(DynamoDBContext context, Func<BatchWriteConfig> config)
         {
             this.context = context ?? throw new ArgumentNullException(nameof(context));
             this.config = config ?? throw new ArgumentNullException(nameof(config));

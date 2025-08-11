@@ -11,7 +11,10 @@ internal static class DynamoDbHelper
     private static LeaseDto FromAttributeMap(IAmazonDynamoDB client, Dictionary<string, AttributeValue> values)
     {
         var doc = Document.FromAttributeMap(values);
-        using var ctx = new DynamoDBContext(client);
+        using var ctx = new DynamoDBContextBuilder()
+            .WithDynamoDBClient(() => client)
+            .Build();
+        
         return ctx.FromDocument<LeaseDto>(doc);
     }
 
@@ -42,9 +45,12 @@ internal static class DynamoDbHelper
                 MutexName = mutexName,
                 LeaseUntil = leaseUntil
             };
+            
+            using var ctx = new DynamoDBContextBuilder()
+                .WithDynamoDBClient(() => client)
+                .Build();
 
-            using var ctx = new DynamoDBContext(client);
-            var opConfig = new DynamoDBOperationConfig
+            var opConfig = new SaveConfig
             {
                 OverrideTableName = tableName
             };

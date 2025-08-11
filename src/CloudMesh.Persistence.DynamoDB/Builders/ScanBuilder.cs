@@ -61,7 +61,6 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         IScanBuilder<T> UseIndex(string indexName);
         IScanBuilder<T> Where<R>(Expression<Func<T, R>> property, ScanOperator scanOp, params R[] values);
         IScanBuilder<T> Where<R>(Expression<Func<T, IEnumerable<R>>> property, ScanOperator scanOp, R value);
-        IScanBuilder<T> Reverse();
         IScanBuilder<T> UseOrInsteadOfAnd();
         IScanBuilder<T> UseConsistentRead();
         IAsyncEnumerable<T> ToAsyncEnumerable(CancellationToken cancellationToken);
@@ -70,14 +69,13 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
     public class ScanBuilder<T> : IScanBuilder<T>
     {
         private readonly IDynamoDBContext context;
-        private readonly Func<DynamoDBOperationConfig> config;
+        private readonly Func<ScanConfig> config;
         private readonly HashSet<ScanFilter> filters = new();
         private string? indexName;
-        private bool reverse;
         private ConditionalOperatorValues conditionalOp = ConditionalOperatorValues.And;
         private bool consistentRead;
 
-        public ScanBuilder(IDynamoDBContext context, Func<DynamoDBOperationConfig> config)
+        public ScanBuilder(IDynamoDBContext context, Func<ScanConfig> config)
         {
             this.context = context ?? throw new ArgumentNullException(nameof(context));
             this.config = config ?? throw new ArgumentNullException(nameof(config));
@@ -161,23 +159,15 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
             return this;
         }
 
-        public IScanBuilder<T> Reverse()
-        {
-            reverse = true;
-            return this;
-        }
-
         public IScanBuilder<T> UseOrInsteadOfAnd()
         {
             conditionalOp = ConditionalOperatorValues.Or;
             return this;
         }
 
-        private AsyncSearch<T> CreateSearch()
+        private IAsyncSearch<T> CreateSearch()
         {
             var opConfig = config();
-            if (reverse)
-                opConfig.BackwardQuery = true;
             opConfig.ConditionalOperator = conditionalOp;
             opConfig.ConsistentRead = consistentRead;
 
@@ -192,7 +182,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
 
         public async IAsyncEnumerable<T> ToAsyncEnumerable([EnumeratorCancellation] CancellationToken cancellationToken)
         {
-            AsyncSearch<T> search = CreateSearch();
+            var search = CreateSearch();
             while (!search.IsDone)
             {
                 var page = await search.GetNextSetAsync(cancellationToken);

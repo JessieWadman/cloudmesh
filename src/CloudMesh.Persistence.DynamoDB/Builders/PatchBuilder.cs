@@ -80,7 +80,10 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
                 throw new InvalidOperationException($"Failed to patch Item: {response.HttpStatusCode}");
 
             var doc = Document.FromAttributeMap(response.Attributes);
-            using var ctx = new DynamoDBContext(client);
+            using var ctx = new DynamoDBContextBuilder()
+                .WithDynamoDBClient(() => client)
+                .Build();
+            
             return ctx.FromDocument<T>(doc);
         }
     }

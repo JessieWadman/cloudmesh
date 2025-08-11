@@ -74,10 +74,13 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         public TransactWriteBuilder(IAmazonDynamoDB client)
         {
             this.client = client ?? throw new ArgumentNullException(nameof(TransactWriteBuilder.client));
-            context = new DynamoDBContext(client, new DynamoDBContextConfig
-            {
-                Conversion = DynamoDBEntryConversion.V2
-            });
+            this.context = new DynamoDBContextBuilder()
+                .WithDynamoDBClient(() => client)
+                .ConfigureContext(opts =>
+                {
+                    opts.Conversion = DynamoDBEntryConversion.V2;
+                })
+                .Build();
         }
 
         private void ThrowIfDisposed()
@@ -219,7 +222,9 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         public ITransactWriteBuilder Delete<T>(string tableName, params T[] items)
         {
             ThrowIfDisposed();
-            using var dbContext = new DynamoDBContext(client);
+            using var dbContext = new DynamoDBContextBuilder()
+                .WithDynamoDBClient(() => client)
+                .Build();
 
             foreach (var item in items)
             {
@@ -239,7 +244,9 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         public ITransactWriteBuilder Delete<T>(string tableName, params (DynamoDBValue HashKey, DynamoDBValue RangeKey)[] keys)
         {
             ThrowIfDisposed();
-            using var dbContext = new DynamoDBContext(client);
+            using var dbContext = new DynamoDBContextBuilder()
+                .WithDynamoDBClient(() => client)
+                .Build();
 
             foreach (var (hashKey, rangeKey) in keys)
             {

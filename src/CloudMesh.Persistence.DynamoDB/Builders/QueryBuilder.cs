@@ -22,7 +22,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
     public class QueryBuilder<T> : IQueryBuilder<T>
     {
         private readonly DynamoDBContext context;
-        private readonly Func<DynamoDBOperationConfig> config;
+        private readonly Func<QueryConfig> config;
         private string? indexName;
         private bool reverse;
         private ConditionalOperatorValues conditionalOp = ConditionalOperatorValues.And;
@@ -33,7 +33,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         private DynamoDBValue[]? sortKeyValues;
         private readonly List<ScanCondition> queryFilter = new();
 
-        public QueryBuilder(DynamoDBContext context, Func<DynamoDBOperationConfig> config)
+        public QueryBuilder(DynamoDBContext context, Func<QueryConfig> config)
         {
             this.context = context ?? throw new ArgumentNullException(nameof(context));
             this.config = config ?? throw new ArgumentNullException(nameof(config));
@@ -87,7 +87,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
             return this;
         }
 
-        private AsyncSearch<T> CreateSearch()
+        private IAsyncSearch<T> CreateSearch()
         {
             var opConfig = config();
             if (reverse)
@@ -100,7 +100,7 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
             if (queryFilter.Count > 0)
                 opConfig.QueryFilter = queryFilter;
 
-            AsyncSearch<T> search;
+            IAsyncSearch<T> search;
             if (sortKeyValues != null && sortKeyValues.Length > 0)
                 search = context.QueryAsync<T>(partitionKey.Value, queryOp, sortKeyValues.Select(v => v.Value), opConfig);
             else

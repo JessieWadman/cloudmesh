@@ -7,10 +7,10 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
     public class ScanTests
     {
         [Fact]
-        public async Task Real_Scan_Builder_Enum_Filter_Being_Peassed()
+        public async Task Real_Scan_Builder_Enum_Filter_Being_Passed()
         {
             var dynamoDbContextMock = new Mock<IDynamoDBContext>();
-            var scanBuilder = new ScanBuilder<TestDto>(dynamoDbContextMock.Object, () => new DynamoDBOperationConfig());
+            var scanBuilder = new ScanBuilder<TestDto>(dynamoDbContextMock.Object, () => new ScanConfig());
 
             try
             {
@@ -28,11 +28,11 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
             dynamoDbContextMock.Verify(ctx => ctx.ScanAsync<TestDto>(
                 It.Is<ScanCondition[]>(conditions =>
                     conditions.Single(cond => cond.PropertyName == "Enum1" && cond.Values[0].GetType().Equals(typeof(TestEnum))) != null),
-                It.IsAny<DynamoDBOperationConfig>()), Times.Once);
+                It.IsAny<ScanConfig>()), Times.Once);
             dynamoDbContextMock.Verify(ctx => ctx.ScanAsync<TestDto>(
                 It.Is<ScanCondition[]>(conditions =>
                     conditions.Single(cond => cond.PropertyName == "Enum2" && cond.Values[0].GetType().Equals(typeof(TestEnum))) != null),
-                It.IsAny<DynamoDBOperationConfig>()), Times.Once);
+                It.IsAny<ScanConfig>()), Times.Once);
         }
 
         [Fact]
@@ -119,30 +119,6 @@ namespace CloudMesh.Persistence.DynamoDB.Tests
             Assert.Equal("1", actual[0].Id);
             Assert.Equal("3", actual[1].Id);
 
-        }
-
-        [Fact]
-        public async Task Reversal_should_work()
-        {
-            var repositoryFactory = new InMemoryRepositoryFactory();
-            using var repo = repositoryFactory.For<TestDto>("Test");
-
-            await repo.SaveAsync(new TestDto { Id = "1", ParentId = "null", Description = "Description1" }, CancellationToken.None);
-            await repo.SaveAsync(new TestDto { Id = "2", ParentId = "1", Description = "Description2" }, CancellationToken.None);
-            await repo.SaveAsync(new TestDto { Id = "3", ParentId = "1", Description = "Description3" }, CancellationToken.None);
-            await repo.SaveAsync(new TestDto { Id = "4", ParentId = "1", Description = "Description4" }, CancellationToken.None);
-            await repo.SaveAsync(new TestDto { Id = "5", ParentId = "1", Description = "Description5" }, CancellationToken.None);
-
-            var actual = await repo.Scan()
-                .UseIndex("byParent")
-                .Where(a => a.Id, ScanOperator.GreaterThanOrEqual, "3")
-                .Reverse()
-                .ToArrayAsync(CancellationToken.None);
-
-            Assert.Equal(3, actual.Length);
-            Assert.Equal("5", actual[0].Id);
-            Assert.Equal("4", actual[1].Id);
-            Assert.Equal("3", actual[2].Id);
         }
 
         [Fact]
