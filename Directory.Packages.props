@@ -1,9 +1,9 @@
 <Project>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net9.0'">
-    <MicrosoftExtensionsVersion>9.0</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>[9.0,)</MicrosoftExtensionsVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
-    <MicrosoftExtensionsVersion>8.0</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>[8.0,)</MicrosoftExtensionsVersion>
   </PropertyGroup>
   
   <ItemGroup>
@@ -11,7 +11,7 @@
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
     
-    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="3.7" />
+    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="[4.0,)" />
     <PackageVersion Include="Npgsql" Version="[8.0.3,)" />
 
     <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />

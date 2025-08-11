@@ -9,7 +9,7 @@ public static class DefaultValueComparer
 
     public static bool IsDefaultValue(object? value, bool emptyStringsAsDefault = false)
     {
-        if (value is string str && emptyStringsAsDefault)
+        if (emptyStringsAsDefault && value is string str)
             return string.IsNullOrEmpty(str);
         return value == null || defaultValueCheckers.GetOrAdd(value.GetType(), CreateDefaultValueChecker)(value);
     }

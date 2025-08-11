@@ -160,7 +160,10 @@ public static class DotNotation
                 : null; // Index out of range
         }
 
-        var getter = PropertyGettersCache.GetOrAdd($"{instance.GetType().FullName}.{part}", path => CreatePropertyGetter(instance.GetType(), part));
+        var getter = PropertyGettersCache.GetOrAdd(
+            $"{instance.GetType().FullName}.{part}", 
+            _ => CreatePropertyGetter(instance.GetType(), part));
+        
         var nextInstance = getter(instance);
         return nextInstance == null ? null : GetValueRecursive(nextInstance, parts, index + 1);
     }
