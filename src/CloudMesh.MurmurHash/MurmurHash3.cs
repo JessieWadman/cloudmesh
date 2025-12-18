@@ -12,6 +12,9 @@
     ///     https://github.com/aappleby/smhasher/blob/61a0530f28277f2e850bfc39600ce61d02b518de/src/MurmurHash3.cpp#L255
     /// </para>
     /// </summary>
+#if (NET9_0_OR_GREATER)
+    [Obsolete("XxHash is BCL native, consider using that instead, unless you need compatibility")]
+#endif
     public class MurmurHash3
     {
         /// <summary>Gets the size, in bits, of the computed hash code.</summary>

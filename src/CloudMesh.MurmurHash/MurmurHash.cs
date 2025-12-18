@@ -15,6 +15,9 @@ namespace CloudMesh.Utils
     /// All credits go to Aronontheweb
     /// https://github.com/akkadotnet/akka.net
     /// </remarks>
+#if (NET9_0_OR_GREATER)
+    [Obsolete("XxHash is BCL native, consider using that instead, unless you need compatibility")]
+#endif    
     public static class MurmurHash
     {
         // Magic values used for MurmurHash's 32 bit hash.

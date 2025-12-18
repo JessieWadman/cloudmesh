@@ -50,3 +50,26 @@ jobs:
 
       - name: Test
         run: dotnet test -f net9.0
+        
+  tests-dotnet10:
+    name: Test dotnet 10.0
+    runs-on: ubuntu-latest
+    steps:
+
+      # - name: Setup dotnet
+      #   uses: actions/setup-dotnet@v1
+      #   with:
+      #     dotnet-version: 3.1.200
+
+      - name: Checkout code
+        uses: actions/checkout@v1
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Set version
+        run: echo "VERSION=1.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
+
+      - name: Test
+        run: dotnet test -f net10.0

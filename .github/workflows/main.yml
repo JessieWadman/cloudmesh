@@ -25,16 +25,16 @@ jobs:
       
     - uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'        
+        dotnet-version: '10.0.x'        
 
     - name: Set version
-      run: echo "VERSION=2.0.$GITHUB_RUN_NUMBER-preview" >> $GITHUB_ENV
+      run: echo "VERSION=2.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
 
     - name: Print version
       run: echo "Building $VERSION"
 
     - name: Test
-      run: dotnet test -f net9.0
+      run: dotnet test -f net10.0
 
     - name: Clean
       run: dotnet clean

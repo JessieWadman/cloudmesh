@@ -8,6 +8,9 @@ namespace CloudMesh.Utils
     /// <remarks>
     /// Copied from Wikipedia
     /// </remarks>
+#if (NET9_0_OR_GREATER)
+    [Obsolete("XxHash is BCL native, consider using that instead, unless you need compatibility")]
+#endif   
     public class MurmurHash2
     {
         private const ulong Magic = 0xc6a4a7935bd1e995;

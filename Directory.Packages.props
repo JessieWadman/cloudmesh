@@ -5,6 +5,9 @@
   <PropertyGroup Condition="'$(TargetFramework)' == 'net8.0'">
     <MicrosoftExtensionsVersion>[8.0,)</MicrosoftExtensionsVersion>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <MicrosoftExtensionsVersion>[10.0,)</MicrosoftExtensionsVersion>
+  </PropertyGroup>
   
   <ItemGroup>
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0" />
@@ -14,20 +17,19 @@
     <PackageVersion Include="AWSSDK.DynamoDBv2" Version="[4.0,)" />
     <PackageVersion Include="Npgsql" Version="[8.0.3,)" />
 
-    <PackageVersion Include="BenchmarkDotNet" Version="0.14.0" />
-    <PackageVersion Include="BenchmarkDotNet.Annotations" Version="0.14.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
+    <PackageVersion Include="BenchmarkDotNet.Annotations" Version="0.15.8" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="[3.0,)" />
     <PackageVersion Include="coverlet.collector" Version="6.0" />
     <PackageVersion Include="Moq" Version="[4.20.72,)" />
-
-    <PackageVersion Include="System.Linq" Version="4.3" />
-    <PackageVersion Include="System.Linq.Async" Version="[6.0.1,)" />
-    <PackageVersion Include="System.Text.Json" Version="[9.0.0,)" />
+    <PackageVersion Include="System.Text.Json" Version="[10.0,)" />   
+    <PackageVersion Include="System.IO.Hashing" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="System.Net.Http" Version="[4.3.4,)" />
     <PackageVersion Include="System.Text.RegularExpressions" Version="[4.3.1,)" />
-    <PackageVersion Include="System.IO.Hashing" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="System.Linq" Version="[4.3,)" />
+    <PackageVersion Include="System.Linq.Async" Version="[7.0.0,)" />
   </ItemGroup>
   
   <ItemGroup>
