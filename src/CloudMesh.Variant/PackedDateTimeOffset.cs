@@ -4,7 +4,7 @@ namespace CloudMesh.Variant;
 
 public readonly partial struct Value
 {
-    private readonly struct PackedDateTimeOffset
+    internal readonly struct PackedDateTimeOffset
     {
         // HHHHHMMT TTT...
         //

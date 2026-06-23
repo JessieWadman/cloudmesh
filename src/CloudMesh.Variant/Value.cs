@@ -3,6 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
+[assembly: InternalsVisibleTo("CloudMesh.Variant.Tests")]
+
 namespace CloudMesh.Variant;
 
 /// <summary>
@@ -34,10 +36,10 @@ namespace CloudMesh.Variant;
 public readonly partial struct Value
 {
     [FieldOffset(0)]
-    private readonly object? _object;
+    internal readonly object? _object;
 
     [FieldOffset(8)]
-    private readonly Union _union;
+    internal readonly Union _union;
 
     public Value(object? value)
     {
@@ -84,6 +86,8 @@ public readonly partial struct Value
             return type;
         }
     }
+    
+    public bool IsNull => _object is null;
 
     [DoesNotReturn]
     private static void ThrowInvalidCast() => throw new InvalidCastException();
@@ -548,13 +552,18 @@ public readonly partial struct Value
     public static explicit operator ArraySegment<char>(in Value value) => value.As<ArraySegment<char>>();
     #endregion
     
+    #region Array 
+    public static implicit operator Value(Array value) => new(value);
+    public static explicit operator Array(in Value value) => value.As<Array>();
+    #endregion
+    
     #region Decimal
     public static implicit operator Value(decimal value) => new(value);
     public static explicit operator decimal(in Value value) => value.As<decimal>();
     public static implicit operator Value(decimal? value) => value.HasValue ? new(value.Value) : new(value);
     public static explicit operator decimal?(in Value value) => value.As<decimal?>();
     #endregion
-
+    
     #region T
     public static Value Create<T>(T value)
     {
@@ -597,6 +606,18 @@ public readonly partial struct Value
         {
             Debug.Assert(Unsafe.SizeOf<T>() <= sizeof(ulong));
             return new Value(StraightCastFlag<T>.Instance, Unsafe.As<T, ulong>(ref value));
+        }
+        
+        if (!RuntimeHelpers.IsReferenceOrContainsReferences<T>())
+        {
+            var size = Unsafe.SizeOf<T>();
+
+            if (size <= Unsafe.SizeOf<Union>())
+            {
+                Union union = default;
+                Unsafe.As<Union, T>(ref union) = value;
+                return new Value(InlineStructFlag<T>.Instance, in union);
+            }
         }
 
         return new Value(value);
@@ -676,6 +697,11 @@ public readonly partial struct Value
         else if (typeof(T).IsEnum && _object is TypeFlag<T> typeFlag)
         {
             value = typeFlag.To(in this);
+            result = true;
+        }
+        else if (_object is TypeFlag<T> typeFlag2)
+        {
+            value = typeFlag2.To(in this);
             result = true;
         }
         else if (_object is T t)
@@ -936,6 +962,7 @@ public readonly partial struct Value
         var value = Unsafe.As<Union, T>(ref Unsafe.AsRef(in _union));
         return value;
     }
+    
     #endregion
 }
 

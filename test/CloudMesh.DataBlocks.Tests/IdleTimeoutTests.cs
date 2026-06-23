@@ -31,8 +31,20 @@ namespace CloudMesh.DataBlocks.Tests
             }
         }
 
-        // [Fact] - Needs investigation: Works locally but not in Github runner....
-        public async void IdleTimeoutShouldWork()
+        [Fact]
+        public async Task IdleTimeoutFiresAfterInactivity()
+        {
+            // No ReceiveTimeout handler is set, so an elapsed idle timeout falls back to Stop(),
+            // which runs AfterStop and completes the TCS. Generous bound to stay CI-stable.
+            await using var block = new TimeoutTestBlock();
+            await block.SubmitAsync("1", null);
+
+            var fired = await Task.WhenAny(block.Completed.Task, Task.Delay(5000));
+            Assert.Equal(block.Completed.Task, fired);
+        }
+
+        [Fact(Skip = "Timing-sensitive sliding-timeout assertions; flaky on CI runners with limited cores.")]
+        public async Task IdleTimeoutShouldWork()
         {
             await using var block = new TimeoutTestBlock();
             await block.SubmitAsync("1", null);
@@ -94,7 +106,7 @@ namespace CloudMesh.DataBlocks.Tests
             }
         }
 
-        //[Fact]
+        [Fact(Skip = "Timing-sensitive child-restart assertions; flaky on CI runners with limited cores.")]
         public async Task RestartingChildrenShouldWork()
         {
             var childStopCount = 0;

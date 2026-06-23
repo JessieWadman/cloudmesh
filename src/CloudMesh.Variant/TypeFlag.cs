@@ -4,7 +4,7 @@ namespace CloudMesh.Variant;
 
 public readonly partial struct Value
 {
-    private abstract class TypeFlag
+    internal abstract class TypeFlag
     {
         public abstract Type Type
         {
@@ -15,7 +15,7 @@ public readonly partial struct Value
         public abstract object ToObject(in Value value);
     }
 
-    private abstract class TypeFlag<T> : TypeFlag
+    internal abstract class TypeFlag<T> : TypeFlag
     {
         public sealed override Type Type
         {

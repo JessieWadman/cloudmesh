@@ -2,7 +2,7 @@
 
 public readonly partial struct Value
 {
-    private sealed class DateTimeOffsetFlag : TypeFlag<DateTimeOffset>
+    internal sealed class DateTimeOffsetFlag : TypeFlag<DateTimeOffset>
     {
         public static DateTimeOffsetFlag Instance { get; } = new();
 

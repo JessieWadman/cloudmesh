@@ -21,7 +21,7 @@ namespace CloudMesh.DataBlocks
 
         public void AddTargets<T>(Expression<Func<T>> newExpression, int count) where T : IDataBlock
         {
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
                 AddTarget(newExpression);
         }
 

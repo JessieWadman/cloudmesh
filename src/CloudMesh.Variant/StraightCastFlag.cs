@@ -4,7 +4,7 @@ namespace CloudMesh.Variant;
 
 public readonly partial struct Value
 {
-    private sealed class StraightCastFlag<T> : TypeFlag<T>
+    internal sealed class StraightCastFlag<T> : TypeFlag<T>
     {
         public static StraightCastFlag<T> Instance { get; } = new();
 

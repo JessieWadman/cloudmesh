@@ -7,7 +7,7 @@
 
     public static class DataBlockScheduler
     {
-        public static void ScheduleTellOnce(ICanSubmit target, TimeSpan delay, object message, IDataBlockRef? sender)
+        public static void ScheduleTellOnce<T>(ICanSubmit target, TimeSpan delay, T message, IDataBlockRef? sender)
         {
             _ = Task.Run(async () =>
             {
@@ -17,10 +17,10 @@
             }).ConfigureAwait(false);
         }
         
-        public static void ScheduleTellOnce(ICanSubmit target, int delayInMilliseconds, object message, IDataBlockRef? sender)
+        public static void ScheduleTellOnce<T>(ICanSubmit target, int delayInMilliseconds, T message, IDataBlockRef? sender)
             => ScheduleTellOnce(target, TimeSpan.FromMilliseconds(delayInMilliseconds), message, sender);
 
-        public static ICancelable ScheduleTellOnceCancelable(ICanSubmit target, TimeSpan delay, object message, IDataBlockRef? sender)
+        public static ICancelable ScheduleTellOnceCancelable<T>(ICanSubmit target, TimeSpan delay, T message, IDataBlockRef? sender)
         {
             var cancellation = new Cancelable();
             var stoppingToken = cancellation.Token;
@@ -44,11 +44,11 @@
             return cancellation;
         }
 
-        public static ICancelable ScheduleTellOnceCancelable(ICanSubmit target, int delayInMilliseconds, object message,
+        public static ICancelable ScheduleTellOnceCancelable<T>(ICanSubmit target, int delayInMilliseconds, T message,
             IDataBlockRef? sender)
             => ScheduleTellOnceCancelable(target, TimeSpan.FromMilliseconds(delayInMilliseconds), message, sender);
 
-        public static ICancelable ScheduleTellRepeatedly(ICanSubmit target, TimeSpan frequency, object message, IDataBlockRef? sender)
+        public static ICancelable ScheduleTellRepeatedly<T>(ICanSubmit target, TimeSpan frequency, T message, IDataBlockRef? sender)
         {
             var cancellation = new Cancelable();
             var stoppingToken = cancellation.Token;
@@ -75,20 +75,29 @@
             return cancellation;
         }
         
-        public static ICancelable ScheduleTellRepeatedly(ICanSubmit target, int frequencyInMilliseconds, object message, IDataBlockRef? sender)
+        public static ICancelable ScheduleTellRepeatedly<T>(ICanSubmit target, int frequencyInMilliseconds, T message, IDataBlockRef? sender)
             => ScheduleTellRepeatedly(target, TimeSpan.FromMilliseconds(frequencyInMilliseconds), message, sender);
 
         public class Cancelable : ICancelable, IDisposable
         {
-            private CancellationTokenSource? CancellationTokenSource = new();
+            private CancellationTokenSource? cancellationTokenSource = new();
 
-            public CancellationToken Token => CancellationTokenSource is null ? default : CancellationTokenSource.Token;
+            public CancellationToken Token
+            {
+                get
+                {
+                    lock(this)
+                    {
+                        return cancellationTokenSource?.Token ?? CancellationToken.None;
+                    }
+                }
+            }
 
             public void Cancel()
             {
                 lock (this)
                 {
-                    CancellationTokenSource?.Cancel();
+                    cancellationTokenSource?.Cancel();
                 }
             }
 
@@ -96,8 +105,8 @@
             {
                 lock (this)
                 {
-                    CancellationTokenSource?.Dispose();
-                    CancellationTokenSource = null;
+                    cancellationTokenSource?.Dispose();
+                    cancellationTokenSource = null;
                 }
                 GC.SuppressFinalize(this);
             }

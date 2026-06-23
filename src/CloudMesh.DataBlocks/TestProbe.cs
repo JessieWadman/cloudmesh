@@ -1,5 +1,6 @@
 namespace CloudMesh.DataBlocks;
 
+// PERF: This is primarily used for testing, so boxing is fine. 
 public class TestProbe : CaptureBlock
 {
     private static long counter;
@@ -20,7 +21,7 @@ public class TestProbe : CaptureBlock
                 if (Messages.TryDequeue(out var result))
                 {
                     throw new InvalidOperationException(
-                        $"Expected no message to be received, but got one of type {result.GetType().Name}");
+                        $"Expected no message to be received, but got one of type {(result == null ? "null" : result.GetType().Name)}");
                 }
             }
 
@@ -47,7 +48,7 @@ public class TestProbe : CaptureBlock
                         throw new InvalidOperationException($"Expect message of type {typeof(T).Name} and got one, but the predicate failed.");
                     }
 
-                    throw new InvalidOperationException($"Expect message of type {typeof(T).Name} but got {result.GetType().Name}"); 
+                    throw new InvalidOperationException($"Expect message of type {typeof(T).Name} but got {result?.GetType().Name ?? "null"}"); 
                 }
             }
                 

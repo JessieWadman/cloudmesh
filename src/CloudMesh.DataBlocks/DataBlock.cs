@@ -1,17 +1,16 @@
 ﻿using CloudMesh.Utils;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Channels;
+using CloudMesh.Variant;
 
 namespace CloudMesh.DataBlocks;
 
-public sealed class Any 
+public static class Any 
 {
-    private Any()
-    {
-    }
 }
 
 public sealed class Timeout
@@ -22,26 +21,24 @@ public sealed class Timeout
     }
 }
 
-public class Envelope
+public readonly struct Envelope
 {
-    private static long messageCounter;
-
-    public Envelope(object message, IDataBlockRef? sender)
+    public Envelope(Value message, IDataBlockRef? sender)
     {
-        Message = message ?? throw new ArgumentNullException(nameof(message));
+        if (message.IsNull)
+            throw new ArgumentNullException(nameof(message));
+        Message = message;
         Sender = sender;
-        MessageId = Interlocked.Increment(ref messageCounter);
     }
 
-    public long MessageId { get; private set; }
     public IDataBlockRef? Sender { get; }
-    public object Message { get; }
+    public Value Message { get; }
 }
 
 public interface ICanSubmit
 {
-    ValueTask SubmitAsync(object message, IDataBlockRef? sender);
-    bool TrySubmit(object message, IDataBlockRef? sender);
+    ValueTask SubmitAsync<T>(T message, IDataBlockRef? sender);
+    bool TrySubmit<T>(T message, IDataBlockRef? sender);
 }
 
 public interface IDataBlockRef : ICanSubmit
@@ -66,9 +63,13 @@ public abstract class DataBlock :
 {
     private readonly Channel<Envelope> inbox;
     private readonly HashSet<IDataBlock> children = new();
-    private readonly Dictionary<Type, Func<object, ValueTask<bool>>> handlers = new();
+    private readonly Dictionary<string, IDataBlock> childrenByName = new();
+    private readonly Dictionary<Type, Func<Value, ValueTask<bool>>> handlers = new();
+    private readonly Dictionary<Type, Func<Value, ValueTask<bool>>> fallbackHandlerCache = new();
     private Func<ValueTask>? timeoutHandler;
-    private ICancelable? timeoutTimer;
+    private TimeSpan? idleTimeout;
+    private Timer? idleTimer;
+    private long lastActivityTicks;
         
     private readonly Task completion;
     private readonly CancellationTokenSource stoppingTokenSource = new();
@@ -106,7 +107,14 @@ public abstract class DataBlock :
     Channel<Envelope> IDataBlock.GetChannel() => inbox;
     
     public DataBlock(int capacity = 1)
-        : this(Channel.CreateBounded<Envelope>(capacity))
+        : this(Channel.CreateBounded<Envelope>(new BoundedChannelOptions(capacity)
+        {
+            // The message loop is the sole reader; multiple producers may submit concurrently.
+            // Synchronous continuations are disabled so handler code never runs on a producer thread.
+            SingleReader = true,
+            SingleWriter = false,
+            AllowSynchronousContinuations = false,
+        }))
     {
     }
 
@@ -141,6 +149,7 @@ public abstract class DataBlock :
             throw new ObjectDisposedException(GetType().Name);
         var dataBlock = this.InitializeDataBlock(newExpression, name);
         children.Add(dataBlock);
+        childrenByName[dataBlock.Name] = dataBlock;
         return dataBlock;
     }
 
@@ -149,7 +158,7 @@ public abstract class DataBlock :
 
     protected IDataBlock? GetChild(string name)
     {
-        return children.FirstOrDefault(c => c.Name == name);
+        return childrenByName.GetValueOrDefault(name);
     }
 
     protected IDataBlock GetOrAddChild<T>(string name, Expression<Func<T>> newExpression)
@@ -171,18 +180,20 @@ public abstract class DataBlock :
     public void Become(Action behavior)
     {
         handlers.Clear();
-        timeoutTimer?.Cancel();
+        fallbackHandlerCache.Clear();
+        idleTimeout = null;
+        idleTimer?.Change(System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
         timeoutHandler = null;
-            
+
         behavior();
     }
-    
+
     protected void Receive<T>(Func<T, bool> handler)
     {
         if (typeof(T) == typeof(Any))
             throw new InvalidOperationException("Use ReceiveAny instead!");
 
-        handlers[typeof(T)] = item => new ValueTask<bool>(handler((T)item));
+        handlers[typeof(T)] = item => new ValueTask<bool>(handler(item.As<T>()));
     }
 
     protected void ReceiveAsync<T>(Func<T, ValueTask<bool>> handler)
@@ -190,7 +201,7 @@ public abstract class DataBlock :
         if (typeof(T) == typeof(Any))
             throw new InvalidOperationException("Use ReceiveAny instead!");
 
-        handlers[typeof(T)] = item => handler((T)item);
+        handlers[typeof(T)] = item => handler(item.As<T>());
     }
     
     protected void Receive<T>(Action<T> handler)
@@ -200,7 +211,7 @@ public abstract class DataBlock :
 
         handlers[typeof(T)] = item =>
         {
-            handler((T)item);
+            handler(item.As<T>());
             return new(true);
         };
     }
@@ -212,24 +223,24 @@ public abstract class DataBlock :
 
         handlers[typeof(T)] = async item =>
         {
-            var op = handler((T)item);
+            var op = handler(item.As<T>());
             if (!op.IsCompleted)
                 await op;
             return true;
         };
     }
 
-    protected void ReceiveAnyAsync(Func<object, ValueTask<bool>> handler)
+    protected void ReceiveAnyAsync(Func<Value, ValueTask<bool>> handler)
     {
         handlers[typeof(Any)] = handler;
     }
     
-    protected void ReceiveAny(Func<object, bool> handler)
+    protected void ReceiveAny(Func<Value, bool> handler)
     {
         handlers[typeof(Any)] = item => new ValueTask<bool>(handler(item));
     }
 
-    protected void ReceiveAnyAsync(Func<object, ValueTask> handler)
+    protected void ReceiveAnyAsync(Func<Value, ValueTask> handler)
     {
         handlers[typeof(Any)] = async item =>
         {
@@ -273,14 +284,27 @@ public abstract class DataBlock :
 
     protected void SetIdleTimeout(TimeSpan? idleTimeout)
     {
-        timeoutTimer?.Cancel();
-        timeoutTimer = null;
-            
+        this.idleTimeout = idleTimeout;
+
         if (idleTimeout.HasValue)
         {
-            timeoutTimer = DataBlockScheduler.ScheduleTellOnceCancelable(this, idleTimeout.Value, Timeout.Instance, this);
+            // A single reusable timer per block, re-armed via Change() — no allocation per reset,
+            // so a sliding idle timeout costs nothing on the hot path (see the message loop).
+            lastActivityTicks = Environment.TickCount64;
+            idleTimer ??= new Timer(
+                static state => ((DataBlock)state!).OnIdleTimerFired(),
+                this,
+                System.Threading.Timeout.InfiniteTimeSpan,
+                System.Threading.Timeout.InfiniteTimeSpan);
+            idleTimer.Change(idleTimeout.Value, System.Threading.Timeout.InfiniteTimeSpan);
+        }
+        else
+        {
+            idleTimer?.Change(System.Threading.Timeout.InfiniteTimeSpan, System.Threading.Timeout.InfiniteTimeSpan);
         }
     }
+
+    private void OnIdleTimerFired() => TrySubmit(Timeout.Instance, this);
 
     private async Task RunAsync()
     {
@@ -294,67 +318,60 @@ public abstract class DataBlock :
             return;
         }
 
-        var hasAnyHandler = handlers.TryGetValue(typeof(Any), out var anyHandler);
-
+        var reader = inbox.Reader;
         while (true)
         {
             try
             {
-                // You must call Stop on the block to gracefully exit an application
-                await foreach (var item in inbox.Reader.ReadAllAsync(
-                                   null, CancellationToken.None))
+                // You must call Stop on the block to gracefully exit an application.
+                // Drain synchronously with TryRead and only await when the inbox is empty,
+                // avoiding a per-message async-enumerator state machine.
+                while (await reader.WaitToReadAsync().ConfigureAwait(false))
                 {
-                    if ((object?)item.Message is null)
-                        continue;
-
-                    if (item.Message is Timeout)
+                    while (reader.TryRead(out var item))
                     {
-                        if (timeoutHandler != null)
-                            await timeoutHandler.Invoke();
-                        else
+                        if (item.Message.IsNull)
+                            continue;
+
+                        var messageType = item.Message.Type!;
+
+                        if (messageType == typeof(Timeout))
                         {
-                            Stop();
+                            // The timeout was disabled (e.g. via Become) before this marker was dequeued.
+                            if (idleTimeout is not { } idle)
+                                continue;
+
+                            var idleMs = (long)idle.TotalMilliseconds;
+                            var sinceActivity = Environment.TickCount64 - lastActivityTicks;
+                            if (sinceActivity < idleMs)
+                            {
+                                // Not actually idle: a message reset the clock after the timer fired,
+                                // or the one-shot timer fired marginally early. Re-arm for the remaining
+                                // time so a genuine timeout is never lost.
+                                idleTimer?.Change(
+                                    TimeSpan.FromMilliseconds(Math.Max(1, idleMs - sinceActivity)),
+                                    System.Threading.Timeout.InfiniteTimeSpan);
+                                continue;
+                            }
+
+                            if (timeoutHandler != null)
+                                await timeoutHandler.Invoke();
+                            else
+                                Stop();
                             continue;
                         }
-                    }
 
-                    Sender = item.Sender;
-                    var messageType = item.Message.GetType();
-                        
-                    if (!TryGetHandler(messageType, out var handler) || handler is null)
-                    {
-                        try
+                        // Any real message counts as activity and slides the idle timeout.
+                        // Re-arming a reusable timer via Change() does not allocate.
+                        if (idleTimeout is { } activeIdle)
                         {
-                            Unhandled(item);
-                        }
-                        catch
-                        {
-                        }
-                    }
-                    else
-                    {
-                        var success = false;
-                        try
-                        {
-                            var handlerOp = handler(item.Message);
-                            if (handlerOp.IsCompleted)
-                                success = handlerOp.Result;
-                            else
-                                success = await handlerOp;
-                        }
-                        catch (Exception ex)
-                        {
-                            Stop();
-                            try
-                            {
-                                UnhandledException(ex);
-                            }
-                            catch
-                            {
-                            }
+                            lastActivityTicks = Environment.TickCount64;
+                            idleTimer?.Change(activeIdle, System.Threading.Timeout.InfiniteTimeSpan);
                         }
 
-                        if (!success)
+                        Sender = item.Sender;
+
+                        if (!TryGetHandler(messageType, out var handler))
                         {
                             try
                             {
@@ -362,6 +379,40 @@ public abstract class DataBlock :
                             }
                             catch
                             {
+                            }
+                        }
+                        else
+                        {
+                            var success = false;
+                            try
+                            {
+                                var handlerOp = handler(item.Message);
+                                if (handlerOp.IsCompleted)
+                                    success = handlerOp.Result;
+                                else
+                                    success = await handlerOp;
+                            }
+                            catch (Exception ex)
+                            {
+                                Stop();
+                                try
+                                {
+                                    UnhandledException(ex);
+                                }
+                                catch
+                                {
+                                }
+                            }
+
+                            if (!success)
+                            {
+                                try
+                                {
+                                    Unhandled(item);
+                                }
+                                catch
+                                {
+                                }
                             }
                         }
                     }
@@ -379,29 +430,40 @@ public abstract class DataBlock :
         await AfterStop();
             
         return;
+    }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        bool TryGetHandler(Type messageType, out Func<object, ValueTask<bool>>? handler)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool TryGetHandler(Type type, [NotNullWhen(true)] out Func<Value, ValueTask<bool>>? handler)
+    {
+        if (handlers.TryGetValue(type, out handler))
+            return true;
+
+        if (fallbackHandlerCache.TryGetValue(type, out handler))
+            return true;
+        
+        // Reflection-fallback path
+        foreach (var h in handlers)
         {
-            var arr = handlers.ToArray().AsSpan();
-            foreach (var temp in arr)
+            if (h.Key.IsAssignableFrom(type))
             {
-                if (temp.Key.IsAssignableFrom(messageType))
-                {
-                    handler = temp.Value;
-                    return true;
-                }
-            }
-
-            if (hasAnyHandler)
-            {
-                handler = anyHandler;
+                fallbackHandlerCache[type] = h.Value;
+                handler = h.Value;
                 return true;
             }
-
-            handler = null;
-            return false;
         }
+        
+        // Any handler path
+        var hasAnyHandler = handlers.TryGetValue(typeof(Any), out var anyHandler);
+        
+        if (hasAnyHandler)
+        {
+            handler = anyHandler!;
+            fallbackHandlerCache[type] = anyHandler!;
+            return true;
+        }
+        
+        handler = null;
+        return false;
     }
 
     protected virtual void Unhandled(Envelope envelope)
@@ -412,6 +474,7 @@ public abstract class DataBlock :
     public void RemoveChild(IDataBlock child)
     {
         children.Remove(child);
+        childrenByName.Remove(child.Name);
     }
 
     private readonly AsyncLock stopLocker = new();
@@ -439,6 +502,10 @@ public abstract class DataBlock :
         // Wait for message loop to exit
         await completion;
 
+        // Release the idle timer (if any) now that no more messages will be processed.
+        idleTimer?.Dispose();
+        idleTimer = null;
+
         var snapshot = Children.ToArray();
 
         // Stop all children
@@ -457,20 +524,22 @@ public abstract class DataBlock :
         _ = Task.Run(StopAsync).ConfigureAwait(false);
     }
 
-    public bool TrySubmit(object message, IDataBlockRef? sender)
+    public bool TrySubmit<T>(T message, IDataBlockRef? sender)
     {
         if (completed)
             return false;
-        var envelope = new Envelope(message, sender);
+        var value = message is Value v ? v : Value.Create(message);
+        var envelope = new Envelope(value, sender);
         return inbox.Writer.TryWrite(envelope);
     }
 
-    public ValueTask SubmitAsync(object message, IDataBlockRef? sender)
+    public ValueTask SubmitAsync<T>(T message, IDataBlockRef? sender)
     {
         if (completed)
             throw new ObjectDisposedException(GetType().Name);
 
-        var envelope = new Envelope(message, sender);
+        var value = message is Value v ? v : Value.Create(message);
+        var envelope = new Envelope(value, sender);
         if (!inbox.Writer.TryWrite(envelope))
         {
             Debug.WriteLine($"Backpressure detected in {Path}");

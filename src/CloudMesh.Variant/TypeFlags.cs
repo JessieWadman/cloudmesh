@@ -2,7 +2,7 @@
 
 public readonly partial struct Value
 {
-    private static class TypeFlags
+    internal static class TypeFlags
     {
         internal static readonly StraightCastFlag<bool> Boolean                 = StraightCastFlag<bool>.Instance;
         internal static readonly StraightCastFlag<char> Char                    = StraightCastFlag<char>.Instance;

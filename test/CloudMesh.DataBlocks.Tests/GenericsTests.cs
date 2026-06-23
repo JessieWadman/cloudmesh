@@ -34,10 +34,7 @@ public class GenericsTests
     {
         TaskCompletionSource<bool> completion = new();
         
-        var receiver = new Receiver(x =>
-        {
-            completion.SetResult(x);
-        });
+        var receiver = new Receiver(completion.SetResult);
         await receiver.SubmitAsync(new Solid(), null);
         var result = await completion.Task;
         Assert.True(result);

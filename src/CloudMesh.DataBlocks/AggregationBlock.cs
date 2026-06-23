@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using CloudMesh.Variant;
 
 namespace CloudMesh.DataBlocks
 {
@@ -25,23 +26,50 @@ namespace CloudMesh.DataBlocks
             });
 
             if (typeof(T) == typeof(object))
-                ReceiveAnyAsync(InternalReceiveOne);
+                ReceiveAnyAsync(InternalReceiveAny);
             else
+            {
                 ReceiveAsync<T>(msg =>
                 {
                     if (msg is not null)
                     {
                         return InternalReceiveOne(msg);
                     }
+
                     return ValueTask.CompletedTask;
                 });
+            }
         }
 
         protected abstract bool ReceiveOne(T message);
 
-        private ValueTask InternalReceiveOne(object message)
+        private ValueTask InternalReceiveOne(T message)
         {
-            if (!ReceiveOne((T)message))
+            if (!ReceiveOne(message))
+                return TaskHelper.CompletedTask;
+
+            if (firstMessageInBatch) // First message of new batch?
+            {
+                firstMessageInBatch = false;
+                if (flushTimer is null)
+                {
+                    flushTimer = DataBlockScheduler.ScheduleTellOnceCancelable(
+                        this, 
+                        flushFrequency, 
+                        Flush.Instance, 
+                        this);
+                    Debug.WriteLine($"[{Path}] Flush timer started");
+                }
+            }
+
+            return TaskHelper.CompletedTask;
+        }
+        
+        private ValueTask InternalReceiveAny(Value message)
+        {
+            if (!message.TryGetValue<T>(out var t))
+                return TaskHelper.CompletedTask;
+            if (!ReceiveOne(t))
                 return TaskHelper.CompletedTask;
 
             if (firstMessageInBatch) // First message of new batch?

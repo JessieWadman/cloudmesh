@@ -1,13 +1,14 @@
 ﻿using System.Diagnostics;
+using CloudMesh.Variant;
 
 namespace CloudMesh.DataBlocks
 {
     public abstract class BufferBlock<T> : DataBlock
     {
-        private readonly List<object> messages;
+        private readonly List<T> messages;
         private readonly int maxCapacity;
-        private readonly TimeSpan maxWaitTimeToFlush;
-        private DateTime arrivalTimeFirstMessageOfBatch = DateTime.Now;
+        private readonly long maxWaitMs;
+        private long arrivalTickFirstMessageOfBatch;
         private ICancelable? flushTimer = null;
 
         private class Flush
@@ -19,8 +20,8 @@ namespace CloudMesh.DataBlocks
             : base(maxCapacity)
         {
             this.maxCapacity = maxCapacity;
-            this.maxWaitTimeToFlush = maxWaitTimeToFlush;
-            messages = new List<object>(maxCapacity);
+            this.maxWaitMs = (long)maxWaitTimeToFlush.TotalMilliseconds;
+            messages = new List<T>(maxCapacity);
 
             ReceiveAsync<Flush>(_ =>
             {
@@ -29,22 +30,45 @@ namespace CloudMesh.DataBlocks
             });
 
             if (typeof(T) == typeof(object))
-                ReceiveAnyAsync(OnReceive);
+                ReceiveAnyAsync(OnAnyReceived);
             else
             {
-                ReceiveAsync<T>(msg => OnReceive(msg!));
-                ReceiveAsync<T[]>(msgs => OnReceive(msgs!));
+                ReceiveAsync<T>(OnOneReceived);
+                ReceiveAsync<T[]>(OnManyReceived);
             }
         }
 
-        private ValueTask OnReceive(object message)
+        private ValueTask OnOneReceived(T one)
         {
             if (messages.Count == 0) // First message of new batch?
-                arrivalTimeFirstMessageOfBatch = DateTime.Now;
-            if (message is T[])
-                messages.AddRange((object[])message);
+                arrivalTickFirstMessageOfBatch = Environment.TickCount64;
+            messages.Add(one);
+            return FlushMaybeAsync();
+        }
+        
+        private ValueTask OnManyReceived(T[] many)
+        {
+            if (messages.Count == 0) // First message of new batch?
+                arrivalTickFirstMessageOfBatch = Environment.TickCount64;
+            messages.AddRange(many);
+            return FlushMaybeAsync();
+        }
+        
+        private ValueTask OnAnyReceived(Value any)
+        {
+            if (messages.Count == 0) // First message of new batch?
+                arrivalTickFirstMessageOfBatch = Environment.TickCount64;
+            if (any.Type!.IsArray)
+            {
+                if (any.TryGetValue<T[]>(out var array))
+                    OnManyReceived(array);
+                else
+                    return ValueTask.CompletedTask;
+            }
+            else if (any.TryGetValue<T>(out var single))
+                OnOneReceived(single);
             else
-                messages.Add(message);
+                return ValueTask.CompletedTask;
             return FlushMaybeAsync();
         }
 
@@ -72,15 +96,15 @@ namespace CloudMesh.DataBlocks
                     await InternalFlushAsync();
                 } while (messages.Count > maxCapacity);
 
-                arrivalTimeFirstMessageOfBatch = DateTime.Now;
+                arrivalTickFirstMessageOfBatch = Environment.TickCount64;
 
                 await Impl();
             }
 
             ValueTask Impl()
             {
-                var timeElapsedSinceFirstMessage = DateTime.Now - arrivalTimeFirstMessageOfBatch;
-                var hasMaxWaitTimePassed = timeElapsedSinceFirstMessage >= maxWaitTimeToFlush;
+                var elapsedMs = Environment.TickCount64 - arrivalTickFirstMessageOfBatch;
+                var hasMaxWaitTimePassed = elapsedMs >= maxWaitMs;
 
                 if (hasMaxWaitTimePassed)
                 {
@@ -96,13 +120,17 @@ namespace CloudMesh.DataBlocks
                 }
 
                 // We've added a message to the buffer, but not flushed, at this point.
-                // Start flush timer, so we guarantee a flush, even if no more messages arrive, or
+                // Start the flush timer, so we guarantee a flush, even if no more messages arrive, or
                 // the next message arrives after the maximum time to wait.
 
                 if (flushTimer is null)
                 {
-                    var timeToNextFlush = maxWaitTimeToFlush - timeElapsedSinceFirstMessage;
-                    flushTimer = DataBlockScheduler.ScheduleTellOnceCancelable(this, timeToNextFlush, Flush.Instance, this);
+                    var timeToNextFlush = TimeSpan.FromMilliseconds(maxWaitMs - elapsedMs);
+                    flushTimer = DataBlockScheduler.ScheduleTellOnceCancelable(
+                        this, 
+                        timeToNextFlush, 
+                        Flush.Instance, 
+                        this);
                     Debug.WriteLine($"[{Path}] Flush timer started");
                 }
 
@@ -123,19 +151,19 @@ namespace CloudMesh.DataBlocks
             if (messages.Count == 0)
                 return;
 
-            var copy = messages
-                .Take(maxCapacity)
-                .Cast<T>()
-                .ToArray();
+            // Flush at most one page (maxCapacity) at a time; the buffer may be over capacity.
+            var count = Math.Min(messages.Count, maxCapacity);
+            var copy = new T[count];
+            messages.CopyTo(0, copy, 0, count);
 
             Debug.WriteLine($"[{Path}] Flushing {copy.Length} messages");
 
             await FlushAsync(copy);
 
-            if (copy.Length == messages.Count)
+            if (count == messages.Count)
                 messages.Clear();
             else
-                messages.RemoveRange(0, copy.Length);
+                messages.RemoveRange(0, count);
         }
 
         protected abstract ValueTask FlushAsync(T[] messages);

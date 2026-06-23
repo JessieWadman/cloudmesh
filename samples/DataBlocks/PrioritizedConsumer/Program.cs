@@ -77,14 +77,10 @@ internal sealed class PrioritizeByMessageAge : IComparer<Envelope>
     {
         
     }
-    
-    public int Compare(Envelope? x, Envelope? y)
+    public int Compare(Envelope x, Envelope y)
     {
-        if (ReferenceEquals(x, y)) return 0;
-        if (y is null) return 1;
-        if (x is null) return -1;
-        if (x.Message is not Message xMessage || y.Message is not Message yMessage)
-            return x.MessageId.CompareTo(y.MessageId);
+        if (!x.Message.TryGetValue<Message>(out var xMessage) || y.Message.TryGetValue<Message>(out var yMessage))
+            return -1;
         return xMessage.Id.CompareTo(yMessage.Id);
     }
 }
@@ -97,12 +93,9 @@ internal sealed class PrioritizeByMessagePriority : IComparer<Envelope>
     {
     }
     
-    public int Compare(Envelope? x, Envelope? y)
+    public int Compare(Envelope x, Envelope y)
     {
-        if (ReferenceEquals(x, y)) return 0;
-        if (y is null) return 1;
-        if (x is null) return -1;
-        if (x.Message is not Message xMessage || y.Message is not Message yMessage)
+        if (!x.Message.TryGetValue<Message>(out var xMessage) || y.Message.TryGetValue<Message>(out var yMessage))
             return 0;
         return xMessage.Priority.CompareTo(yMessage.Priority);
     }
