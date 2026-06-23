@@ -41,7 +41,14 @@ jobs:
 
     - name: Build all in release mode
       run: dotnet build CloudMesh.sln -c Release /p:CI=true /p:Version=$VERSION
+        
+    # Get a short-lived NuGet API key
+    - name: NuGet login (OIDC → temp API key)
+      uses: NuGet/login@v1
+      id: login
+      with:
+        user: cloudmesh-bot 
 
     - name: Publish
-      run: dotnet nuget push **\*.nupkg --source 'https://api.nuget.org/v3/index.json' --skip-duplicate --api-key ${{secrets.NUGET_KEY}}
+      run: dotnet nuget push **\*.nupkg --source 'https://api.nuget.org/v3/index.json' --skip-duplicate --api-key ${{steps.login.outputs.NUGET_API_KEY}}
     
