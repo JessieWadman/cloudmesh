@@ -110,7 +110,7 @@ public abstract class DataBlock :
         : this(Channel.CreateBounded<Envelope>(new BoundedChannelOptions(capacity)
         {
             // The message loop is the sole reader; multiple producers may submit concurrently.
-            // Synchronous continuations are disabled so handler code never runs on a producer thread.
+            // Synchronous continuations are disabled, so handler code never runs on a producer thread.
             SingleReader = true,
             SingleWriter = false,
             AllowSynchronousContinuations = false,

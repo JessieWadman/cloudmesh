@@ -38,6 +38,11 @@ public class StateMachineTests
     
     private class TestStateMachine : DataBlock
     {
+        // Simulated work delay before the Running -> Done auto-transition. Kept well above the
+        // test's ExpectNoMessage(50) window so poll-granularity jitter on a constrained CI runner
+        // cannot let the Done transition race into that window (was 150ms, ~60ms margin = flaky).
+        private const int WorkDurationMs = 1000;
+
         private readonly WeakReference<ICanSubmit?> monitor;
 
         public TestStateMachine(ICanSubmit? monitor = null)
@@ -65,7 +70,7 @@ public class StateMachineTests
         {
             Receive<Signals.Finished>(_ => Become(Done));
             ReceiveAny(_ => Sender?.SubmitAsync(Signals.InvalidState.Instance, this));
-            DataBlockScheduler.ScheduleTellOnce(this, 150, Signals.Finished.Instance, this);
+            DataBlockScheduler.ScheduleTellOnce(this, WorkDurationMs, Signals.Finished.Instance, this);
             
             NotifyStateChanged("Running");
         }
