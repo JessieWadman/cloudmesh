@@ -23,11 +23,6 @@ public readonly partial struct Value
         [FieldOffset(0)] public DateTime DateTime;              // 8 bytes  (ulong)
         [FieldOffset(0)] public PackedDateTimeOffset PackedDateTimeOffset;
         [FieldOffset(0)] public (int Offset, int Count) Segment;
-        
-        // Ensure we're 32 bytes in size:
-        [FieldOffset(0)] public ulong Lo1;
-        [FieldOffset(8)] public ulong Hi1;
-        [FieldOffset(16)] public ulong Lo2;
-        [FieldOffset(24)] public ulong Hi2;
+        [FieldOffset(0)] public Guid Guid;
     }
 }

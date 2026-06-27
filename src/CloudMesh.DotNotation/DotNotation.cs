@@ -1,26 +1,36 @@
 ﻿using System.Collections;
 using System.Collections.Concurrent;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
+using System.Runtime.CompilerServices;
 
 namespace CloudMesh;
 
-/// <summary>
-/// Dot notation helper to get and set nested properties using a dot notation path.
-/// </summary>
 public static class DotNotation
 {
-    private static readonly ConcurrentDictionary<string, Func<object, object?>> PropertyGettersCache = new();
-    private static readonly ConcurrentDictionary<string, Action<object, object?>> PropertySettersCache = new();
+    private static readonly ConcurrentDictionary<string, CompiledPath> PathCache = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<MemberKey, Accessor> AccessorCache = new();
+    private static readonly ConcurrentDictionary<Type, CollectionInfo> CollectionCache = new();
+
+    public static object? GetValue(object instance, string dotNotationPath)
+        => Compile(dotNotationPath).GetValue(instance);
+
+    public static void SetValue(object instance, string dotNotationPath, object? value)
+        => Compile(dotNotationPath).SetValue(instance, value);
+
+    // Additive API. Existing callers remain untouched.
+    public static CompiledPath Compile(string dotNotationPath)
+        => PathCache.GetOrAdd(dotNotationPath, static path => new CompiledPath(Parse(path)));
 
     public static (string PropertyPath, Type MemberType) ToDotNotation<TSource, TProp>(
         Expression<Func<TSource, TProp>> pathExpression)
     {
-        pathExpression = (Expression<Func<TSource, TProp>>)new DotNotationVisitor().Visit(pathExpression);
+        pathExpression = (Expression<Func<TSource, TProp>>)new DotNotationVisitor().Visit(pathExpression)!;
 
         var str = pathExpression.Body.ToString();
         str = str[(str.IndexOf('.') + 1)..];
+
         str = str.Replace(".get_Item(\"", "[\"");
         str = str.Replace("\")", "\"]");
         str = str.Replace(".get_Item(", "[");
@@ -28,354 +38,385 @@ public static class DotNotation
 
         return (str, pathExpression.ReturnType);
     }
-    
-    private static string[] ParseDotNotation(scoped ReadOnlySpan<char> dotNotation)
+
+    private static Segment[] Parse(string path)
     {
-        var result = new List<string>();
-        var buffer = new StringBuilder();
+        var result = new List<Segment>(4);
+        var start = 0;
         var insideQuotes = false;
         var insideIndexer = false;
 
-        foreach (var currentChar in dotNotation)
+        for (var i = 0; i < path.Length; i++)
         {
-            switch (currentChar)
+            switch (path[i])
             {
-                // Handle opening/closing double quotes
-                case '\"':
+                case '"':
                     insideQuotes = !insideQuotes;
-                    buffer.Append(currentChar); // Keep the quotes in the key to identify dictionary keys with dots
-                    continue;
-                // Handle opening/closing indexer brackets
+                    break;
+
                 case '[':
-                {
+                    if (!insideIndexer && i > start)
+                        AddProperty(path.AsSpan(start, i - start), result);
+
                     insideIndexer = true;
-                    if (buffer.Length > 0)
-                    {
-                        result.Add(buffer.ToString());
-                        buffer.Clear();
-                    }
-                    buffer.Append(currentChar); // Start capturing inside the indexer
-                    continue;
-                }
+                    start = i + 1;
+                    break;
+
                 case ']':
-                    insideIndexer = false;
-                    buffer.Append(currentChar);
-                    result.Add(buffer.ToString());
-                    buffer.Clear();
-                    continue;
-                // Handle dots (property separators) outside of quotes and indexers
-                case '.' when !insideQuotes && !insideIndexer:
-                {
-                    if (buffer.Length > 0)
+                    if (insideIndexer)
                     {
-                        result.Add(buffer.ToString());
-                        buffer.Clear();
+                        AddIndexer(path.AsSpan(start, i - start), result);
+                        insideIndexer = false;
+                        start = i + 1;
                     }
-                    continue;
-                }
-                default:
-                    // Add the current character to the buffer
-                    buffer.Append(currentChar);
+                    break;
+
+                case '.' when !insideQuotes && !insideIndexer:
+                    if (i > start)
+                        AddProperty(path.AsSpan(start, i - start), result);
+
+                    start = i + 1;
                     break;
             }
         }
 
-        // Add any remaining characters in the buffer as the last part
-        if (buffer.Length > 0)
-        {
-            result.Add(buffer.ToString());
-        }
+        if (start < path.Length)
+            AddProperty(path.AsSpan(start), result);
 
         return result.ToArray();
-    }
 
-    /// <summary>
-    /// Get the value of the specified nested property value from the given instance. 
-    /// </summary>
-    /// <param name="instance">Root object whose property is the first part of the dot notation.</param>
-    /// <param name="dotNotationPath">A dot notation path to the property to read</param>
-    /// <returns>The value, if possible</returns>
-    /// <example>
-    /// <code>
-    ///     var post = new Post();
-    ///     var value = DotNotation.GetValue(obj, "Authors[0].Attributes[\"ContactDetails\"].Email");
-    /// </code>
-    /// </example>
-    public static object? GetValue(object instance, string dotNotationPath)
-    {
-        var parts = ParseDotNotation(dotNotationPath);
-        return GetValueRecursive(instance, parts, 0);
-    }
-
-    /// <summary>
-    /// Sets the value of the specified nested property value from the given instance.
-    /// </summary>
-    /// <param name="instance">Root object whose property is the first part of the dot notation.</param>
-    /// <param name="dotNotationPath">A dot notation path to the property to write</param>
-    /// <param name="value">The value to write</param>
-    /// <example>
-    /// <code>
-    ///     var post = new Post();
-    ///     var value = DotNotation.SetValue(obj, "Authors[0].Attributes[\"ContactDetails\"].Email", "bob@domain.com");
-    /// </code>
-    /// </example>
-    public static void SetValue(object instance, string dotNotationPath, object? value)
-    {
-        var parts = ParseDotNotation(dotNotationPath);
-        SetValueRecursive(instance, parts, 0, value, null);
-    }
-
-    private static object? GetValueRecursive(object instance, string[] parts, int index)
-    {
-        if (index >= parts.Length) 
-            return instance;
-
-        var part = parts[index];
-        if (IsIndexedPart(part, out var propertyName, out var keyPart))
+        static void AddProperty(ReadOnlySpan<char> raw, List<Segment> result)
         {
-            var currentValue = GoToProperty(instance, propertyName, out var currentType);
+            if (raw.Length != 0)
+                result.Add(new Segment(raw.ToString(), null));
+        }
 
-            if (currentValue == null) 
-                return null;
+        static void AddIndexer(ReadOnlySpan<char> raw, List<Segment> result)
+        {
+            if (raw.Length >= 2 && raw[0] == '"' && raw[^1] == '"')
+                raw = raw[1..^1];
 
-            if (typeof(IDictionary).IsAssignableFrom(currentType))
+            result.Add(new Segment(string.Empty, raw.ToString()));
+        }
+    }
+
+    public sealed class CompiledPath
+    {
+        private readonly Segment[] segments;
+
+        internal CompiledPath(Segment[] segments)
+            => this.segments = segments;
+
+        public object? GetValue(object instance)
+        {
+            object? current = instance;
+
+            foreach (var segment in segments)
             {
-                var dictionary = (IDictionary)currentValue;
-                var keyType = currentType.GetGenericArguments()[0]; // Get dictionary key type
-                var keyObject = ConvertKeyType(keyPart, keyType);
+                if (current is null)
+                    return null;
 
-                return dictionary.Contains(keyObject) 
-                    ? GetValueRecursive(dictionary[keyObject]!, parts, index + 1) 
+                if (segment.PropertyName.Length != 0)
+                    current = GetAccessor(current.GetType(), segment.PropertyName).Getter(current);
+
+                if (current is null)
+                    return null;
+
+                if (segment.Key is not null)
+                    current = ReadIndex(current, segment.Key);
+            }
+
+            return current;
+        }
+
+        public void SetValue(object instance, object? value)
+        {
+            if (segments.Length == 0)
+                return;
+
+            var current = instance;
+
+            for (var i = 0; i < segments.Length - 1; i++)
+                current = ResolveForWrite(current, segments[i]);
+
+            WriteFinal(current, segments[^1], value);
+        }
+
+        private static object ResolveForWrite(object instance, Segment segment)
+        {
+            object current = instance;
+
+            if (segment.PropertyName.Length != 0)
+                current = GetOrCreateProperty(current, segment.PropertyName);
+
+            if (segment.Key is not null)
+                current = GetOrCreateIndex(current, segment.Key);
+
+            return current;
+        }
+
+        private static void WriteFinal(object instance, Segment segment, object? value)
+        {
+            if (segment.Key is null)
+            {
+                GetAccessor(instance.GetType(), segment.PropertyName).Setter(instance, value);
+                return;
+            }
+
+            var target = segment.PropertyName.Length == 0
+                ? instance
+                : GetOrCreateProperty(instance, segment.PropertyName);
+
+            WriteIndex(target, segment.Key, value);
+        }
+
+        private static object GetOrCreateProperty(object instance, string propertyName)
+        {
+            var accessor = GetAccessor(instance.GetType(), propertyName);
+            var value = accessor.Getter(instance);
+
+            if (value is not null)
+                return value;
+
+            value = CreateInstance(accessor.Type);
+            accessor.Setter(instance, value);
+            return value;
+        }
+
+        private static object GetOrCreateIndex(object instance, string key)
+        {
+            var info = GetCollectionInfo(instance.GetType());
+
+            if (info.Kind == CollectionKind.Dictionary)
+            {
+                var dictionary = (IDictionary)instance;
+                var convertedKey = ConvertKey(key, info.KeyType!);
+
+                if (dictionary.Contains(convertedKey))
+                {
+                    var existing = dictionary[convertedKey];
+                    if (existing is not null)
+                        return existing;
+                }
+
+                var created = CreateInstance(info.ValueType!);
+                dictionary[convertedKey] = created;
+                return created;
+            }
+
+            if (info.Kind == CollectionKind.List)
+            {
+                var list = (IList)instance;
+                var index = ParseIndex(key);
+
+                while (list.Count <= index)
+                    list.Add(GetDefaultValue(info.ElementType!));
+
+                var existing = list[index];
+
+                if (existing is not null)
+                    return existing;
+
+                var created = CreateInstance(info.ElementType!);
+                list[index] = created;
+                return created;
+            }
+
+            throw NotIndexable(instance);
+        }
+
+        private static object? ReadIndex(object instance, string key)
+        {
+            var info = GetCollectionInfo(instance.GetType());
+
+            if (info.Kind == CollectionKind.Dictionary)
+            {
+                var dictionary = (IDictionary)instance;
+                var convertedKey = ConvertKey(key, info.KeyType!);
+
+                return dictionary.Contains(convertedKey)
+                    ? dictionary[convertedKey]
                     : null;
             }
 
-            if (!typeof(IList).IsAssignableFrom(currentType)) 
-                return null; // Invalid access type
-            
-            var list = (IList)currentValue;
-            var indexValue = (int)ConvertKeyType(keyPart, typeof(int));
-
-            return indexValue < list.Count 
-                ? GetValueRecursive(list[indexValue]!, parts, index + 1) 
-                : null; // Index out of range
-        }
-
-        var getter = PropertyGettersCache.GetOrAdd(
-            $"{instance.GetType().FullName}.{part}", 
-            _ => CreatePropertyGetter(instance.GetType(), part));
-        
-        var nextInstance = getter(instance);
-        return nextInstance == null ? null : GetValueRecursive(nextInstance, parts, index + 1);
-    }
-
-    private static object? GoToProperty(object instance, string propertyName, out Type? propertyType)
-    {
-        object? propertyValue;
-            
-        if (propertyName == string.Empty)
-        {
-            propertyValue = instance;
-            propertyType = instance.GetType();
-        }
-        else
-        {
-            var propertyInfo = instance.GetType().GetProperty(propertyName);
-            if (propertyInfo == null)
+            if (info.Kind == CollectionKind.List)
             {
-                throw new InvalidOperationException(
-                    $"Property '{propertyName}' not found on type {instance.GetType().FullName}.");
+                var list = (IList)instance;
+                var index = ParseIndex(key);
+
+                return (uint)index < (uint)list.Count
+                    ? list[index]
+                    : null;
             }
 
-            propertyValue = propertyInfo.GetValue(instance);
-            propertyType = propertyInfo.PropertyType;
+            throw NotIndexable(instance);
         }
 
-        return propertyValue;
+        private static void WriteIndex(object instance, string key, object? value)
+        {
+            var info = GetCollectionInfo(instance.GetType());
+
+            if (info.Kind == CollectionKind.Dictionary)
+            {
+                ((IDictionary)instance)[ConvertKey(key, info.KeyType!)] = value;
+                return;
+            }
+
+            if (info.Kind == CollectionKind.List)
+            {
+                var list = (IList)instance;
+                var index = ParseIndex(key);
+
+                while (list.Count <= index)
+                    list.Add(GetDefaultValue(info.ElementType!));
+
+                list[index] = value;
+                return;
+            }
+
+            throw NotIndexable(instance);
+        }
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static Accessor GetAccessor(Type type, string propertyName)
+        => AccessorCache.GetOrAdd(new MemberKey(type, propertyName), static key => CreateAccessor(key.Type, key.Name));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static CollectionInfo GetCollectionInfo(Type type)
+        => CollectionCache.GetOrAdd(type, static type =>
+        {
+            if (typeof(IDictionary).IsAssignableFrom(type))
+            {
+                var dictionaryType = FindGenericInterface(type, typeof(IDictionary<,>)) ?? type;
+                var args = dictionaryType.GetGenericArguments();
+
+                if (args.Length == 2)
+                    return new CollectionInfo(CollectionKind.Dictionary, args[0], args[1], null);
+            }
+
+            if (typeof(IList).IsAssignableFrom(type))
+            {
+                if (type.IsArray)
+                    return new CollectionInfo(CollectionKind.List, null, null, type.GetElementType());
+
+                var listType = FindGenericInterface(type, typeof(IList<>)) ?? type;
+                var args = listType.GetGenericArguments();
+
+                if (args.Length == 1)
+                    return new CollectionInfo(CollectionKind.List, null, null, args[0]);
+            }
+
+            return default;
+        });
+
+    private static Type? FindGenericInterface(Type type, Type genericInterface)
+    {
+        if (type.IsInterface && type.IsGenericType && type.GetGenericTypeDefinition() == genericInterface)
+            return type;
+
+        foreach (var candidate in type.GetInterfaces())
+        {
+            if (candidate.IsGenericType && candidate.GetGenericTypeDefinition() == genericInterface)
+                return candidate;
+        }
+
+        return null;
+    }
+
+    private static Accessor CreateAccessor(Type type, string propertyName)
+    {
+        var property = type.GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public)
+            ?? throw new InvalidOperationException($"Property '{propertyName}' not found on type '{type.FullName}'.");
+
+        var instance = Expression.Parameter(typeof(object), "instance");
+        var value = Expression.Parameter(typeof(object), "value");
+
+        var typedInstance = Expression.Convert(instance, type);
+        var propertyAccess = Expression.Property(typedInstance, property);
+
+        var getter = Expression.Lambda<Func<object, object?>>(
+            Expression.Convert(propertyAccess, typeof(object)),
+            instance
+        ).Compile();
+
+        var setter = Expression.Lambda<Action<object, object?>>(
+            Expression.Assign(
+                propertyAccess,
+                Expression.Convert(value, property.PropertyType)
+            ),
+            instance,
+            value
+        ).Compile();
+
+        return new Accessor(getter, setter, property.PropertyType);
+    }
+
+    private static object CreateInstance(Type type)
+        => Activator.CreateInstance(type)
+           ?? throw new InvalidOperationException($"Could not create instance of '{type.FullName}'.");
 
     private static object? GetDefaultValue(Type type)
+        => type.IsValueType ? Activator.CreateInstance(type) : null;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ParseIndex(string key)
+        => int.Parse(key, NumberStyles.Integer, CultureInfo.InvariantCulture);
+
+    private static object ConvertKey(string key, Type targetType)
     {
-        return type.IsValueType ? Activator.CreateInstance(type) : null;
+        if (targetType == typeof(string)) return key;
+        if (targetType == typeof(int)) return ParseIndex(key);
+        if (targetType == typeof(long)) return long.Parse(key, NumberStyles.Integer, CultureInfo.InvariantCulture);
+        if (targetType == typeof(Guid)) return Guid.Parse(key);
+        if (targetType.IsEnum) return Enum.Parse(targetType, key);
+
+        throw new InvalidOperationException($"Unsupported key type '{targetType.FullName}'.");
     }
 
-    private static void SetValueRecursive(object instance, string[] parts, int index, object? value, object? key)
+    private static InvalidOperationException NotIndexable(object instance)
+        => new($"Type '{instance.GetType().FullName}' is not indexable.");
+
+    internal readonly record struct Segment(string PropertyName, string? Key);
+    internal readonly record struct MemberKey(Type Type, string Name);
+
+    internal sealed record Accessor(
+        Func<object, object?> Getter,
+        Action<object, object?> Setter,
+        Type Type
+    );
+
+    internal readonly record struct CollectionInfo(
+        CollectionKind Kind,
+        Type? KeyType,
+        Type? ValueType,
+        Type? ElementType
+    );
+
+    internal enum CollectionKind
     {
-        if (index >= parts.Length - 1)
-        {
-            var part = parts[index];
-
-            if (key == null && IsIndexedPart(part, out var propertyName, out var keyPart))
-            {
-                var propertyType = instance.GetType();
-                var propertyValue = instance;
-                
-                if (propertyName != string.Empty)
-                {
-                    var propertyInfo = instance.GetType().GetProperty(propertyName)
-                        ?? throw new InvalidOperationException($"Property '{propertyName}' not found on type {instance.GetType().FullName}.");
-                    propertyType = propertyInfo.PropertyType;
-                    propertyValue = propertyInfo.GetValue(instance) ?? Activator.CreateInstance(propertyInfo.PropertyType);
-                    propertyInfo.SetValue(instance, propertyValue);
-                }
-
-                if (typeof(IDictionary).IsAssignableFrom(propertyType))
-                {
-                    var dictionary = (IDictionary)propertyValue!;
-                    var keyType = propertyType.GetGenericArguments()[0];
-                    var keyObject = ConvertKeyType(keyPart, keyType);
-                    dictionary[keyObject] = value;
-                }
-                else if (typeof(IList).IsAssignableFrom(propertyType))
-                {
-                    var list = (IList)propertyValue!;
-                    var indexValue = (int)ConvertKeyType(keyPart, typeof(int));
-                    while (list.Count <= indexValue)
-                    {
-                        list.Add(GetDefaultValue(propertyType.GetGenericArguments()[0])!);
-                    }
-                    list[indexValue] = value;
-                }
-            }
-            else
-            {
-                var setter = PropertySettersCache.GetOrAdd($"{instance.GetType().FullName}.{parts[index]}", path => CreatePropertySetter(instance.GetType(), parts[index]));
-                setter(instance, value);
-            }
-            return;
-        }
-
-        var nextPart = parts[index];
-        if (IsIndexedPart(nextPart, out var propertyNameNext, out var keyPartNext))
-        {
-            if (!string.IsNullOrEmpty(propertyNameNext))
-            {
-                var propertyInfoNext = instance.GetType().GetProperty(propertyNameNext);
-                var propertyValueNext = propertyInfoNext?.GetValue(instance) ??
-                                        Activator.CreateInstance(propertyInfoNext!.PropertyType);
-                propertyInfoNext.SetValue(instance, propertyValueNext);
-
-                SetValueRecursive(propertyValueNext!, parts, index + 1, value, keyPartNext);
-            }
-            else
-            {
-                var instanceType = instance.GetType();
-                object? nextValue;
-                if (typeof(IDictionary).IsAssignableFrom(instanceType))
-                {
-                    var dictionary = (IDictionary)instance!;
-                    var keyType = instanceType.GetGenericArguments()[0];
-                    var keyObject = ConvertKeyType(keyPartNext, keyType);
-                    
-                    nextValue = dictionary.Contains(keyObject) 
-                        ? dictionary[keyObject]
-                        : Activator.CreateInstance(instanceType.GetGenericArguments()[1])!;
-                    dictionary[keyObject] = nextValue;
-                    SetValueRecursive(nextValue!, parts, index + 1, value, null);
-                }
-                else if (typeof(IList).IsAssignableFrom(instanceType))
-                {
-                    var list = (IList)instance!;
-                    var indexValue = (int)ConvertKeyType(keyPartNext, typeof(int));
-                    nextValue = Activator.CreateInstance(instanceType.GetGenericArguments()[0])!;
-                    while (list.Count <= indexValue)
-                    {
-                        list.Add(Activator.CreateInstance(instanceType.GetGenericArguments()[0])!);
-                    }
-                    list[indexValue] = nextValue;
-                    SetValueRecursive(nextValue, parts, index + 1, value, null);
-                }
-            }
-        }
-        else
-        {
-            var getter = PropertyGettersCache.GetOrAdd($"{instance.GetType().FullName}.{nextPart}", path => CreatePropertyGetter(instance.GetType(), nextPart));
-            
-            var propertyInfo = instance.GetType().GetProperty(nextPart)
-                               ?? throw new InvalidOperationException($"Property '{nextPart}' not found on type {instance.GetType().FullName}.");
-            
-            var nextInstance = getter(instance) ?? Activator.CreateInstance(propertyInfo.PropertyType);
-
-            var setter = PropertySettersCache.GetOrAdd($"{instance.GetType().FullName}.{nextPart}", path => CreatePropertySetter(instance.GetType(), nextPart));
-            setter(instance, nextInstance);
-
-            SetValueRecursive(nextInstance!, parts, index + 1, value, null);
-        }
+        None,
+        Dictionary,
+        List
     }
 
-    private static bool IsIndexedPart(string part, out string propertyName, out string keyPart)
-    {
-        var openBracket = part.IndexOf('[');
-        if (openBracket != -1)
-        {
-            propertyName = part.Substring(0, openBracket);
-            keyPart = part.Substring(openBracket + 1, part.Length - openBracket - 2).Trim('"');
-            return true;
-        }
-        propertyName = part;
-        keyPart = string.Empty;
-        return false;
-    }
-
-    private static object ConvertKeyType(string keyPart, Type targetType)
-    {
-        if (targetType == typeof(string)) return keyPart;
-        if (targetType == typeof(int)) return int.Parse(keyPart);
-        if (targetType == typeof(long)) return long.Parse(keyPart);
-        if (targetType == typeof(Guid)) return Guid.Parse(keyPart);
-        if (targetType.IsEnum) return Enum.Parse(targetType, keyPart);
-
-        throw new InvalidOperationException($"Unsupported key type: {targetType}");
-    }
-
-    private static Func<object, object?> CreatePropertyGetter(Type type, string propertyName)
-    {
-        var param = Expression.Parameter(typeof(object), "instance");
-        var typedParam = Expression.Convert(param, type);
-        var property = Expression.Property(typedParam, propertyName);
-        var castProperty = Expression.Convert(property, typeof(object));
-        return Expression.Lambda<Func<object, object?>>(castProperty, param).Compile();
-    }
-
-    private static Action<object, object?> CreatePropertySetter(Type type, string propertyName)
-    {
-        var param = Expression.Parameter(typeof(object), "instance");
-        var valueParam = Expression.Parameter(typeof(object), "value");
-        var typedParam = Expression.Convert(param, type);
-        var property = Expression.Property(typedParam, propertyName);
-        var castValue = Expression.Convert(valueParam, property.Type);
-        var assign = Expression.Assign(property, castValue);
-        return Expression.Lambda<Action<object, object?>>(assign, param, valueParam).Compile();
-    }
-    
-    private sealed class DotNotationVisitor : ExpressionVisitor
+    internal sealed class DotNotationVisitor : ExpressionVisitor
     {
         protected override Expression VisitMember(MemberExpression memberExpression)
         {
-            // Recurse down to see if we can simplify...
             var expression = Visit(memberExpression.Expression);
 
-            // If we've ended up with a constant, and it's a property or a field,
-            // we can simplify ourselves to a constant
-            if (expression is not ConstantExpression constantExpression)
+            if (expression is not ConstantExpression constant)
                 return base.VisitMember(memberExpression);
 
-            var container = constantExpression.Value;
-            var member = memberExpression.Member;
-            switch (member)
+            var container = constant.Value;
+
+            return memberExpression.Member switch
             {
-                case FieldInfo fi:
-                {
-                    var value = fi.GetValue(container);
-                    return Expression.Constant(value, fi.FieldType);
-                }
-                case PropertyInfo propertyInfo:
-                {
-                    var value = propertyInfo.GetValue(container, null);
-                    return Expression.Constant(value);
-                }
-                default:
-                    return base.VisitMember(memberExpression);
-            }
+                FieldInfo field => Expression.Constant(field.GetValue(container), field.FieldType),
+                PropertyInfo property => Expression.Constant(property.GetValue(container), property.PropertyType),
+                _ => base.VisitMember(memberExpression)
+            };
         }
     }
 }

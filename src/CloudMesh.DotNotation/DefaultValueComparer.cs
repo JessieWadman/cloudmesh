@@ -1,44 +1,36 @@
 using System.Collections.Concurrent;
-using System.Linq.Expressions;
+using System.Runtime.CompilerServices;
 
 namespace CloudMesh;
 
 public static class DefaultValueComparer
 {
-    private static readonly ConcurrentDictionary<Type, Func<object?, bool>> defaultValueCheckers = new();
+    private static readonly ConcurrentDictionary<Type, Func<object, bool>> Checkers = new();
 
     public static bool IsDefaultValue(object? value, bool emptyStringsAsDefault = false)
     {
-        if (emptyStringsAsDefault && value is string str)
-            return string.IsNullOrEmpty(str);
-        return value == null || defaultValueCheckers.GetOrAdd(value.GetType(), CreateDefaultValueChecker)(value);
+        if (value is null)
+            return true;
+
+        if (value is string s)
+            return emptyStringsAsDefault && s.Length == 0;
+
+        var type = value.GetType();
+
+        // Non-null reference types can never be default(T), because default(T) is null.
+        if (!type.IsValueType)
+            return false;
+
+        return Checkers.GetOrAdd(type, static t =>
+        {
+            var method = typeof(DefaultValueComparer)
+                .GetMethod(nameof(CreateChecker), System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!
+                .MakeGenericMethod(t);
+
+            return (Func<object, bool>)method.Invoke(null, null)!;
+        })(value);
     }
 
-    private static Func<object?, bool> CreateDefaultValueChecker(Type type)
-    {
-        // Create a strongly-typed EqualityComparer<T> dynamically
-        var equalityComparerType = typeof(EqualityComparer<>).MakeGenericType(type);
-        var defaultComparerProperty = equalityComparerType.GetProperty("Default")!;
-        var equalsMethod = equalityComparerType.GetMethod("Equals", [type, type])!;
-
-        // Get the default value for the given type
-        var defaultValue = Expression.Default(type);
-
-        // Create the parameter expression for the input value
-        var param = Expression.Parameter(typeof(object), "value");
-
-        // Convert the input parameter from object to the target type
-        var castParam = Expression.Convert(param, type);
-
-        // Call the Equals method on the EqualityComparer<T>.Default
-        var equalsCall = Expression.Call(
-            Expression.Property(null, defaultComparerProperty),
-            equalsMethod,
-            castParam,
-            defaultValue
-        );
-
-        // Compile the expression into a Func<object?, bool>
-        return Expression.Lambda<Func<object?, bool>>(equalsCall, param).Compile();
-    }
+    private static Func<object, bool> CreateChecker<T>() where T : struct
+        => static value => EqualityComparer<T>.Default.Equals(Unsafe.Unbox<T>(value), default);
 }

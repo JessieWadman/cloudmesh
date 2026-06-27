@@ -19,5 +19,6 @@ public readonly partial struct Value
         internal static readonly StraightCastFlag<DateTime> DateTime            = StraightCastFlag<DateTime>.Instance;
         internal static readonly DateTimeOffsetFlag DateTimeOffset              = DateTimeOffsetFlag.Instance;
         internal static readonly PackedDateTimeOffsetFlag PackedDateTimeOffset  = PackedDateTimeOffsetFlag.Instance;
+        internal static readonly GuidFlag Guid                                  = GuidFlag.Instance;
     }
 }

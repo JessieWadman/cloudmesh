@@ -433,6 +433,15 @@ public readonly partial struct Value
     public static implicit operator Value(double? value) => new(value);
     public static explicit operator double?(in Value value) => value.As<double?>();
     #endregion
+    
+    #region Guid
+
+    public static implicit operator Value(Guid value) => Value.Create(value);
+    public static implicit operator Value(Guid? value) => Value.Create(value);
+    public static explicit operator Guid?(in Value value) => value.As<Guid?>();
+    public static explicit operator Guid(in Value value) => value.As<Guid>();
+    
+    #endregion
 
     #region DateTimeOffset
     public Value(DateTimeOffset value)
@@ -616,7 +625,7 @@ public readonly partial struct Value
             {
                 Union union = default;
                 Unsafe.As<Union, T>(ref union) = value;
-                return new Value(InlineStructFlag<T>.Instance, in union);
+                return new Value(StraightCastFlag<T>.Instance, in union);
             }
         }
 
@@ -635,7 +644,7 @@ public readonly partial struct Value
     public readonly bool TryGetValue<T>(out T value)
     {
         bool success;
-
+        
         // Checking the type gets all the non-relevant compares elided by the JIT
         if (_object is not null && ((typeof(T) == typeof(bool) && _object == TypeFlags.Boolean)
             || (typeof(T) == typeof(byte) && _object == TypeFlags.Byte)
@@ -653,6 +662,26 @@ public readonly partial struct Value
             value = CastTo<T>();
             success = true;
         }
+        /*
+        else if (typeof(T) == typeof(Guid))
+        {
+            value = Unsafe.As<Guid, T>(ref Unsafe.AsRef(in _union.Guid));
+            success = true;
+        }
+        else if (typeof(T) == typeof(Guid?))
+        {
+            if (_object == null)
+            {
+                value = default!;
+                success = true;
+            }
+            else
+            {
+                Guid? temp = _union.Guid;
+                value = Unsafe.As<Guid?, T>(ref Unsafe.AsRef(in temp));
+                success = true;
+            }
+        }*/
         else if (typeof(T) == typeof(DateTime) && _object == TypeFlags.DateTime)
         {
             value = Unsafe.As<DateTime, T>(ref Unsafe.AsRef(in _union.DateTime));
@@ -818,43 +847,16 @@ public readonly partial struct Value
             value = Unsafe.As<DateTimeOffset?, T>(ref Unsafe.AsRef((DateTimeOffset?)_union.PackedDateTimeOffset.Extract()));
             result = true;
         }
-        else if (Nullable.GetUnderlyingType(typeof(T)) is { IsEnum: true } underlyingType
-                 && _object is TypeFlag underlyingTypeFlag
-                 && underlyingTypeFlag.Type == underlyingType)
-        {
-            // Asked for a nullable enum, and we've got that type.
-
-            // We've got multiple layouts, depending on the size of the enum backing field. We can't use the
-            // nullable itself (e.g. default(T)) as a template as it gets treated specially by the runtime.
-
-            var size = Unsafe.SizeOf<T>();
-
-            switch (size)
-            {
-                case (2):
-                    value = Unsafe.As<NullableTemplate<byte>, T>(ref Unsafe.AsRef(new NullableTemplate<byte>(_union.Byte)));
-                    result = true;
-                    break;
-                case (4):
-                    value = Unsafe.As<NullableTemplate<ushort>, T>(ref Unsafe.AsRef(new NullableTemplate<ushort>(_union.UInt16)));
-                    result = true;
-                    break;
-                case (8):
-                    value = Unsafe.As<NullableTemplate<uint>, T>(ref Unsafe.AsRef(new NullableTemplate<uint>(_union.UInt32)));
-                    result = true;
-                    break;
-                case (16):
-                    value = Unsafe.As<NullableTemplate<ulong>, T>(ref Unsafe.AsRef(new NullableTemplate<ulong>(_union.UInt64)));
-                    result = true;
-                    break;
-                default:
-                    ThrowInvalidOperation();
-                    value = default!;
-                    result = false;
-                    break;
-            }
-        }
 #pragma warning restore CS9193 // Argument should be a variable because it is passed to a 'ref readonly' parameter
+        else if (Nullable.GetUnderlyingType(typeof(T)) is { } underlying
+                 && _object is TypeFlag { IsStraightCastFlag: true } straightCastFlag
+                 && straightCastFlag.Type == underlying)
+        {
+            // Asked for a nullable straight-cast value (enum or inline struct — e.g. MyEnum?, Guid?,
+            // MyStruct?) held inline. Rebuild the nullable without boxing.
+            value = straightCastFlag.ToNullable<T>(in this);
+            result = true;
+        }
         else
         {
             value = default!;

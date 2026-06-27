@@ -127,6 +127,16 @@ public class DotNotationTests
         var result = DotNotation.GetValue(obj, "[First]");
         Assert.Equal("value1", result);
     }
+    
+    [Fact]
+    public void Compiled()
+    {
+        var obj = new TestClass();
+        obj.NestedDictList[1] = new List<string> { "value1" };
+        var path = DotNotation.Compile("NestedDictList[1][0]");
+        var actual = path.GetValue(obj);
+        Assert.Equal("value1", actual);
+    }
 }
 
 public enum TestEnum

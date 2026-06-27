@@ -1,5 +1,7 @@
-﻿using System.Buffers;
-using System.Collections.Concurrent;
+﻿using System;
+using System.Buffers;
+using System.Collections.Generic;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Text;
 using System.Text.Json;
@@ -15,28 +17,23 @@ namespace CloudMesh.Temporal;
 /// <code>
 /// var employee = new Employee();
 /// employee.Id = 14;
-/// employee.Set(default, e => e.Name, "Bob"); // Will by default return Bob for name
-/// employee.Set(new DateOnly(2024, 12, 01), e => e.Name, "Bobby"); // At 2024-12-01 and after the name returned will be Bobby
-/// employee.Getat(default); // Returns an Employee object with Id = 14 and Name = "Bob"
-/// employee.GetAt(new DateOnly(2024, 12, 01)); // Returns an Employee object with Id = 14 and Name = "Bobby"
+/// employee.Set(default, e => e.Name, "Bob");
+/// employee.Set(new DateOnly(2024, 12, 01), e => e.Name, "Bobby");
+/// employee.GetAt(default);
+/// employee.GetAt(new DateOnly(2024, 12, 01));
 /// </code>
 /// </example>
 public class Temporal<T>
 {
     protected readonly SortedDictionary<DateOnly, Dictionary<string, object?>> PendingChanges = new();
-    
+
     public IEnumerable<DateOnly> GetPointInTimes() => PendingChanges.Keys;
-    
+
     /// <summary>
     /// Set default values, such as primary key values, that should be applied to the instance before returning it.
     /// </summary>
     /// <param name="snapshot">The snapshot being returned</param>
     /// <param name="pointInTime">The point in time for the snapshot</param>
-    /// <example>
-    /// <code>
-    ///     snapshot.Id = this.Id;
-    /// </code>
-    /// </example>
     protected virtual void BeforeReturnSnapshot(T snapshot, DateOnly pointInTime)
     { }
 
@@ -50,61 +47,63 @@ public class Temporal<T>
 
         foreach (var entry in PendingChanges)
         {
-            // Write the date as the key
-            writer.WritePropertyName(entry.Key.ToString("yyyy-MM-dd"));
-
-            // Start the array for property changes
+            writer.WritePropertyName(entry.Key.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             writer.WriteStartObject();
 
             foreach (var change in entry.Value)
-            {
                 writer.WriteString(change.Key, change.Value?.ToString());
-            }
 
             writer.WriteEndObject();
         }
 
         writer.WriteEndObject();
     }
-    
+
     /// <summary>
     /// Deserializes the pending changes part of this object from a JSON reader.
     /// </summary>
     /// <param name="reader">The reader to use</param>
-    /// <remarks>Will consume the remainder of the reader. If you're parsing part of the object, get the
+    /// <remarks>
+    /// Will consume the remainder of the reader. If you're parsing part of the object, get the
     /// ValueSpan from your current reader that captures the pending changes, and instantiate a new reader on top of
-    /// that buffer only.</remarks>
+    /// that buffer only.
+    /// </remarks>
     public void DeserializePendingChanges(ref Utf8JsonReader reader)
     {
         PendingChanges.Clear();
 
         while (reader.Read())
         {
-            if (reader.TokenType != JsonTokenType.PropertyName) 
-                continue;
-            
-            // Read the point in time (DateOnly)
-            var pointInTime = DateOnly.Parse(reader.GetString()!);
-             
-            // Prepare the inner dictionary to store property changes
-            var changes = new Dictionary<string, object?>();
+            if (reader.TokenType == JsonTokenType.EndObject)
+                return;
 
-            // Start reading the changes for this date
-            reader.Read(); // Move to StartObject
+            if (reader.TokenType != JsonTokenType.PropertyName)
+                continue;
+
+            var pointInTime = DateOnly.ParseExact(
+                reader.GetString()!,
+                "yyyy-MM-dd",
+                CultureInfo.InvariantCulture
+            );
+
+            reader.Read();
+
+            var changes = new Dictionary<string, object?>(StringComparer.Ordinal);
 
             while (reader.Read() && reader.TokenType != JsonTokenType.EndObject)
             {
                 var propertyPath = reader.GetString()!;
                 reader.Read();
-                var value = reader.GetString();  // Read the value for the property
 
-                changes[propertyPath] = value;
+                changes[propertyPath] = reader.TokenType == JsonTokenType.Null
+                    ? null
+                    : reader.GetString();
             }
 
             PendingChanges[pointInTime] = changes;
         }
     }
-    
+
     /// <summary>
     /// Sets a property value for a given point in time.
     /// </summary>
@@ -118,24 +117,35 @@ public class Temporal<T>
         var (propertyName, _) = DotNotation.ToDotNotation(property);
 
         if (!PendingChanges.TryGetValue(pointInTime, out var pointInTimeChanges))
-            PendingChanges[pointInTime] = pointInTimeChanges = new Dictionary<string, object?>();
+        {
+            pointInTimeChanges = new Dictionary<string, object?>(StringComparer.Ordinal);
+            PendingChanges.Add(pointInTime, pointInTimeChanges);
+        }
 
         pointInTimeChanges[propertyName] = value;
 
         if (!clearFutureChanges)
             return;
 
-        var clonedList = PendingChanges
-            .OrderBy(kp => kp.Key)
-            .Where(kp => kp.Key > pointInTime && kp.Value.ContainsKey(propertyName))
-            .ToArray();
+        List<DateOnly>? emptyDates = null;
 
-        foreach (var changes in clonedList)
+        foreach (var entry in PendingChanges)
         {
-            changes.Value.Remove(propertyName);
-            if (changes.Value.Count == 0)
-                PendingChanges.Remove(changes.Key);
+            if (entry.Key <= pointInTime)
+                continue;
+
+            if (!entry.Value.Remove(propertyName))
+                continue;
+
+            if (entry.Value.Count == 0)
+                (emptyDates ??= new List<DateOnly>()).Add(entry.Key);
         }
+
+        if (emptyDates is null)
+            return;
+
+        foreach (var date in emptyDates)
+            PendingChanges.Remove(date);
     }
 
     /// <summary>
@@ -149,16 +159,21 @@ public class Temporal<T>
     {
         var (propertyName, _) = DotNotation.ToDotNotation(property);
 
-        // Use binary search by leveraging SortedDictionary
-        foreach (var entry in PendingChanges.Reverse())
+        object? latest = null;
+        var found = false;
+
+        foreach (var entry in PendingChanges)
         {
-            if (entry.Key <= pointInTime && entry.Value.TryGetValue(propertyName, out var value))
-                return (R?)value;
+            if (entry.Key > pointInTime)
+                break;
+
+            if (entry.Value.TryGetValue(propertyName, out latest))
+                found = true;
         }
 
-        return default;
+        return found ? (R?)latest : default;
     }
-    
+
     /// <summary>
     /// Gets a snapshot of the entire object at a given point in time.
     /// </summary>
@@ -166,44 +181,25 @@ public class Temporal<T>
     /// <returns>A snapshot representing the object at a given point in time.</returns>
     public T GetAt(DateOnly pointInTime)
     {
-        // Create a new instance of type T
         var instance = Activator.CreateInstance<T>();
+        var latestPropertyValues = CollectLatestChanges(pointInTime);
 
-        // Dictionary to track the latest value for each property
-        var latestPropertyValues = new Dictionary<string, object?>();
-
-        // Get all the changes that occurred up to the given point in time
-        var changesToApply = PendingChanges
-            .Where(entry => entry.Key <= pointInTime)
-            .OrderByDescending(entry => entry.Key)  // Sort by descending to get the latest changes first
-            .SelectMany(entry => entry.Value)
-            .ToList();  // Flatten the dictionary of changes
-
-        // Apply only the latest change for each property
-        foreach (var change in changesToApply)
-        {
-            if (!latestPropertyValues.ContainsKey(change.Key))
-            {
-                latestPropertyValues[change.Key] = change.Value;
-            }
-        }
-
-        // Apply each unique property change to the instance
         foreach (var change in latestPropertyValues)
         {
             try
             {
-                DotNotation.SetValue(instance!, change.Key, change.Value); // Use SetValue from previous implementation
+                DotNotation.Compile(change.Key).SetValue(instance!, change.Value);
             }
             catch (Exception error)
             {
-                throw new InvalidCastException($"Failed to set property {change.Key} to {change.Value} on {instance}", error);
+                throw new InvalidCastException(
+                    $"Failed to set property {change.Key} to {change.Value} on {instance}",
+                    error
+                );
             }
         }
 
-        // Hook for any logic to be applied before returning the instance
         BeforeReturnSnapshot(instance, pointInTime);
-
         return instance;
     }
 
@@ -213,52 +209,78 @@ public class Temporal<T>
     /// <param name="pointInTime"></param>
     public void ReduceTo(DateOnly pointInTime)
     {
-        // Dictionary to track the latest value for each property
-        var latestPropertyValues = new Dictionary<string, object?>();
+        var latestPropertyValues = CollectLatestChanges(pointInTime);
 
-        // Get all the changes that occurred up to the given point in time
-        var changesToApply = PendingChanges
-            .Where(entry => entry.Key <= pointInTime)
-            .OrderByDescending(entry => entry.Key)  // Sort by descending to get the latest changes first
-            .SelectMany(entry => entry.Value)
-            .ToList();  // Flatten the dictionary of changes
+        List<DateOnly>? datesToRemove = null;
 
-        // Apply only the latest change for each property
-        foreach (var change in changesToApply)
+        foreach (var date in PendingChanges.Keys)
         {
-            if (!latestPropertyValues.ContainsKey(change.Key))
-            {
-                latestPropertyValues[change.Key] = change.Value;
-            }
+            if (date > pointInTime)
+                break;
+
+            (datesToRemove ??= new List<DateOnly>()).Add(date);
         }
 
-        foreach (var key in PendingChanges.Keys.Where(k => k <= pointInTime).ToArray())
+        if (datesToRemove is not null)
         {
-            PendingChanges.Remove(key);
+            foreach (var date in datesToRemove)
+                PendingChanges.Remove(date);
         }
-        
-        PendingChanges.Add(default, new());
-        
+
+        var reduced = new Dictionary<string, object?>(latestPropertyValues.Count, StringComparer.Ordinal);
+
         foreach (var change in latestPropertyValues)
         {
-            if (DefaultValueComparer.IsDefaultValue(change.Value, true))
-                continue;
-            
-            PendingChanges[default][change.Key] = change.Value;
+            if (!DefaultValueComparer.IsDefaultValue(change.Value, emptyStringsAsDefault: true))
+                reduced[change.Key] = change.Value;
         }
+
+        PendingChanges[default] = reduced;
+    }
+
+    private Dictionary<string, object?> CollectLatestChanges(DateOnly pointInTime)
+    {
+        var latestPropertyValues = new Dictionary<string, object?>(StringComparer.Ordinal);
+
+        foreach (var entry in PendingChanges)
+        {
+            if (entry.Key > pointInTime)
+                break;
+
+            foreach (var change in entry.Value)
+                latestPropertyValues[change.Key] = change.Value;
+        }
+
+        return latestPropertyValues;
     }
 
     public override string ToString()
     {
-        var temp = JsonSerializer.Serialize(this)[..^1];
+        var json = JsonSerializer.Serialize(this);
+
         var buffer = new ArrayBufferWriter<byte>();
         var writer = new Utf8JsonWriter(buffer);
-        SerializePendingChanges(ref writer);
-        writer.Flush();
-        writer.Dispose();
-        if (temp != "{")
-            temp += ",";
-        temp += $"\"pendingChanges\":{{{Encoding.UTF8.GetString(buffer.WrittenSpan[1..].ToArray())}}}";
-        return temp;
+
+        try
+        {
+            SerializePendingChanges(ref writer);
+            writer.Flush();
+        }
+        finally
+        {
+            writer.Dispose();
+        }
+
+        var pendingChangesJson = Encoding.UTF8.GetString(buffer.WrittenSpan);
+
+        if (json == "{}")
+            return string.Concat("{\"pendingChanges\":", pendingChangesJson, "}");
+
+        return string.Concat(
+            json.AsSpan(0, json.Length - 1),
+            ",\"pendingChanges\":",
+            pendingChangesJson,
+            "}"
+        );
     }
 }
