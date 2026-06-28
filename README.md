@@ -17,10 +17,12 @@ dotnet add package CloudMesh.Variant
 | Package | What it gives you |
 |---|---|
 | **CloudMesh.Core** | Common utilities and allocation-conscious helpers (locks, throttling, fast parsing, buffered IO). |
+| **CloudMesh.Timestamp** | Monotonic, DST/NTP-immune timestamps (`Timestamp`, `HighResolutionTimestamp`) for intervals and timeouts. |
 | **CloudMesh.DataBlocks** | A lightweight, in-process actor/pipeline library built on `System.Threading.Channels`. |
 | **CloudMesh.Variant** | A boxing-free discriminated union (`Value`) for storing arbitrary value types without heap allocation. |
 | **CloudMesh.Uuid** | A very fast UUID v7 (RFC 9562) generator. |
-| **CloudMesh.Guid64** | A roughly time-sortable 64-bit id (Snowflake-style) for use as database primary keys. |
+| **CloudMesh.Guid64** | A roughly time-sortable 64-bit id (Snowflake-style) for database primary keys, with a compact 13-char Crockford Base32 string form. |
+| **CloudMesh.Base32** | Fast, zero-allocation Crockford Base32 — encode/decode 32- and 64-bit integers and byte buffers (spans and `ReadOnlySequence`). |
 | **CloudMesh.DotNotation** | Read/write nested object values by string path (`"address.city"`), compiled and cached. |
 | **CloudMesh.MurmurHash** | 32-, 64- and 128-bit MurmurHash implementations with no heavy dependencies. |
 | **CloudMesh.Temporal** | Effective-dated ("temporal") records with historical and pending future values. |
@@ -43,8 +45,19 @@ Common utilities and optimization helpers.
 | `FastDecimalParser` | Very fast decimal parsing of strings — much faster than the built-in `decimal.Parse()`. |
 | `BufferedStreamLineReader` | Statically-allocated, buffered line reader for reading one line of text at a time from a stream with little to no GC — designed for streaming millions of rows. |
 | `MemoryHelper` | Helpers for growing/aligning pooled `Memory<T>` buffers. |
-| `Timestamp` | A monotonic, allocation-free relative timestamp (based on `Environment.TickCount64`) for intervals and timeouts that is immune to wall-clock/NTP/DST jumps. |
 | `ConcurrentList`, `PriorityQueue` | Small concurrent/utility collections. |
+
+## Timestamp
+
+Monotonic, allocation-free timestamps for measuring intervals, timeouts, retries and cache expiry. Unlike
+`DateTimeOffset.UtcNow`, they don't jump on wall-clock, NTP or DST changes, so elapsed-time math stays sane.
+
+| Class | Description |
+|---|---|
+| `Timestamp` | A relative timestamp based on `Environment.TickCount64`. The cheapest option; millisecond resolution. |
+| `HighResolutionTimestamp` | Based on `Stopwatch.GetTimestamp()` — higher resolution and still cheap. Converts to/from Unix time and `DateTimeOffset` using a captured origin, with an `…Exact…` variant that re-anchors to the current clock when you need it. |
+
+`HighResolutionTimestamp` is what backs `Guid64`'s clock, giving it a fast, monotonic timestamp source.
 
 ## Data Blocks
 
@@ -90,15 +103,61 @@ and any user `struct` that fits inline (up to the union size) — including read
 
 ## Uuid
 
-A very fast UUID v7 (RFC 9562) generator — time-ordered, so it sorts well as a database key. It uses .NET's
-`xoshiro256` random source and, for a fixed timestamp, generates a v7 UUID in single-digit nanoseconds —
-roughly 5× faster than the BCL's `Guid.CreateVersion7()` in the included benchmarks.
+A very fast UUID v7 (RFC 9562) generator — time-ordered, so it sorts well as a database key. It fills the
+random bits from .NET's thread-safe `Random.Shared` (`xoshiro256**`) and takes its timestamp from
+`HighResolutionTimestamp`, sidestepping the `CoCreateGuid` interop and `DateTimeOffset.UtcNow` call that
+make the BCL's generator slower. In the included benchmarks `Uuid.Create()` runs in ~20 ns — about 2.5×
+faster than `Guid.CreateVersion7()` — with no allocations, and is safe to call concurrently.
+
+```csharp
+Guid id = Uuid.Create();              // v7, time-ordered
+Guid at = Uuid.Next(timestamp);       // or supply your own long ms / DateTimeOffset / TimeProvider
+```
 
 ## Guid64
 
 A roughly time-sortable 64-bit guid implementation based on Twitter's Snowflake algorithm.
 Great for client-generated primary keys, because database index operations are much faster on a 64-bit
 integer than on a 128-bit `Guid`.
+
+```csharp
+Guid64 id = Guid64.NewGuid();   // generated in-process — no database round-trip
+long   key = id;                // implicitly a long — store it as a bigint
+string s   = id.ToString();     // 13-char Crockford Base32 (e.g. "3F8K2QH7ZB10A")
+
+Guid64 back = Guid64.Parse(s);  // round-trips; also TryParse + IParsable/ISpanParsable
+```
+
+By default `ToString()` renders the compact 13-character Crockford Base32 form (format `B`) — far friendlier
+than a 128-bit `Guid` while still sorting by creation time; `D` gives the plain decimal `long` and `X` the
+hex. The timestamp comes from `HighResolutionTimestamp`, so the clock is fast and monotonic. In clustered
+deployments, set `Guid64.NodeId` (0–1023) per node to avoid collisions.
+
+## Base32
+
+A fast, zero-allocation [Crockford Base32](https://www.crockford.com/base32.html) codec (alphabet
+`0123456789ABCDEFGHJKMNPQRSTVWXYZ` — no `I`, `L`, `O` or `U`). Encoding writes directly into a
+caller-supplied buffer, so nothing is allocated.
+
+```csharp
+Span<char> text = stackalloc char[13];
+Base32.Format(1_520_779_705_068_019_712L, text);  // fixed-width: 13 chars for a long, 7 for an int
+Base32.TryDecodeInt64(text, out long value);      // ...and back again
+```
+
+It also encodes and decodes arbitrary byte buffers, and decodes from spans **or** `ReadOnlySequence<T>`
+(the `System.IO.Pipelines` buffer type), taking the Base32 text as either `char` or UTF-8/ASCII `byte` data:
+
+```csharp
+Base32.Format(bytes, chars);                       // bytes -> Base32 chars
+Base32.TryDecode(chars,    into, out int written); // ReadOnlySpan<char>          -> bytes
+Base32.TryDecode(utf8,     into, out written);     // ReadOnlySpan<byte>          -> bytes
+Base32.TryDecode(sequence, into, out written);     // ReadOnlySequence<char|byte> -> bytes
+```
+
+Decoding follows the Crockford spec leniently: case-insensitive, the confusable letters `I`/`L` read as `1`
+and `O` as `0`, and `-` separators are ignored. Because the integer forms are fixed-width and
+most-significant-symbol first, the encoded strings sort in the same order as the underlying numbers.
 
 ## DotNotation
 

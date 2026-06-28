@@ -7,5 +7,9 @@
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <Description>Time-sortable Guids implementing UUID v7</Description>
     </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\CloudMesh.Timestamp\CloudMesh.Timestamp.csproj" />
+    </ItemGroup>
     
 </Project>

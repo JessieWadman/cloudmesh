@@ -3,22 +3,24 @@ using CloudMesh.Internal;
 
 namespace CloudMesh;
 
-// This is the exact same implementation as dotnet 9, except we're using System.Random to fill the counter bits instead
-// of relying on a legacy COM interop call (which is a lot slower).
+// This is the exact same implementation as dotnet 9, except we're using Random.Shared (XoShiro implementation) to fill
+// the counter-bits instead of relying on a legacy Ole32 interop call (which is a lot slower). We also rely on
+// HighResolutionTimestamp.Now.ToUnixTimeMilliseconds() to generate the timestamp, which is a lot faster than using
+// DateTimeOffset.Now.ToUnixTimeMilliseconds().
+// Random.Shared is thread-safe (a lock-free, per-thread Xoshiro), so Create()/Next() can be called concurrently.
 
 /* Benchmarks:
-    | Method                                          | Mean      | Error     | StdDev    |
-    |------------------------------------------------ |----------:|----------:|----------:|
-    | Uuid_v4_baseline_plain_old_Guid_NewGuid         | 29.652 ns | 0.0447 ns | 0.0396 ns | Guid.NewGuid()
-    | Uuid_v7_ComInterop_NewGuid                      | 32.701 ns | 0.0389 ns | 0.0325 ns | Dotnet 9 implementation standard implementation (using fixed timestamp)
-    | Uuid7_ComInterop_NewGuid_WithActualTime         | 65.456 ns | 1.2858 ns | 2.5679 ns | Dotnet 9 implementation using DateTimeOffset.Now.ToUnixTimeMilliseconds()
-    | Uuid_v7_Xoshiro256                              |  6.197 ns | 0.0179 ns | 0.0159 ns | This implementation (dotnet uses xoshiro256 algorithm to generate random numbers) using fixed timestamp
-    | Uuid_v7_Xoshiro256_WithActualTime               | 32.389 ns | 0.0115 ns | 0.0090 ns | This implementation when called with DateTimeOffset.Now.ToUnixTimeMilliseconds()
-    | Uuid7_System_Cryptography_RandomNumberGenerator | 40.614 ns | 0.1770 ns | 0.1569 ns | Same implementation as this but using System.Cryptography.RandomNumberGenerator       
-    
-Here we can see that the DateTimeOffset.ToUnixTimeMilliseconds() adds a lot of overhead.
-We can also see that this here is the fastest approach to generating a v7 compatible UUID.
- */
+| Method               | Mean     | Error    | StdDev   | Allocated |
+|--------------------- |---------:|---------:|---------:|----------:|
+| DotNetNewGuid        | 30.46 ns | 0.287 ns | 0.254 ns |         - | Guid.NewGuid() - Baseline
+| DotNetCreateVersion7 | 49.62 ns | 0.276 ns | 0.231 ns |         - | Guid.CreateVersion7()
+| CloudMeshUuid        | 19.91 ns | 0.142 ns | 0.133 ns |         - | Uuid.Create()
+   
+We can see that this is the fastest approach to generating a v7 compatible UUID.
+In dotnet 10, Guid.CreateVersion7() uses DateTimeOffset.Now.ToUnixTimeMilliseconds() to generate the timestamp, which is a lot slower than using a high resolution timestamp.
+It also uses Ole32.CoCreateGuid() which is also slower than using a random number generator.
+Therein lies the reason why Guid.CreateVersion7() is so slow.
+*/
 
 /// <summary>
 /// Time sortable UUID v7 implementation
@@ -30,7 +32,7 @@ We can also see that this here is the fastest approach to generating a v7 compat
 /// </remarks>
 public static class Uuid
 {
-    private static readonly Random Random = new();
+    public static Guid Create() => Next(HighResolutionTimestamp.Now.ToUnixTimeMilliseconds());
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public static unsafe Guid Next(long unixTimestampMilliseconds)
@@ -48,7 +50,7 @@ public static class Uuid
         // to code for the hot-path and just fill the entire 16 bytes, since it's exactly 2 random ulongs, rather than forcing
         // System.Random to fall back to a slower code path that accommodates for byte arrays that aren't divisible by 8.
         Span<byte> bytes = new(uuid.Bytes, 16);
-        Random.NextBytes(bytes);
+        Random.Shared.NextBytes(bytes);
 
         Unsafe.AsRef(in uuid.GuidFields._a) = (int)(unixTimestampMilliseconds >> 16);
         Unsafe.AsRef(in uuid.GuidFields._b) = (short)(unixTimestampMilliseconds);
