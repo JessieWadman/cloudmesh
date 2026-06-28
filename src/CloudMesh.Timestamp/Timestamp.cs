@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace CloudMesh.Threading;
+namespace System;
 
 /// <summary>
 /// Monotonic, fast timestamp.
@@ -9,6 +9,11 @@ namespace CloudMesh.Threading;
 /// </summary>
 public readonly record struct Timestamp : IComparable<Timestamp>
 {
+    private const long TicksPerMillisecond = TimeSpan.TicksPerMillisecond;
+    private const long UnixEpochMilliseconds = 62135596800000L;
+    private static readonly long OriginTickCount = Environment.TickCount64;
+    private static readonly long OriginUnixMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    
     private readonly long milliseconds;
     
     private Timestamp(long milliseconds) => this.milliseconds = milliseconds;
@@ -43,7 +48,11 @@ public readonly record struct Timestamp : IComparable<Timestamp>
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public long ToUnixTimeMilliseconds() => ToDateTimeOffset().ToUnixTimeMilliseconds();
+    public long ToUnixTimeMilliseconds()
+        => OriginUnixMilliseconds + (milliseconds - OriginTickCount);
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public long ToExactUnixTimeMilliseconds() => ToDateTimeOffset().ToUnixTimeMilliseconds();
 
     /// <summary>
     /// Converts this timestamp to a UTC DateTimeOffset.

@@ -11,4 +11,9 @@
     <ItemGroup>
         <PackageReference Include="System.IO.Hashing" />
     </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\CloudMesh.Base32\CloudMesh.Base32.csproj" />
+      <ProjectReference Include="..\CloudMesh.Timestamp\CloudMesh.Timestamp.csproj" />
+    </ItemGroup>
 </Project>
