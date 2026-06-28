@@ -5,16 +5,16 @@ namespace CloudMesh;
 
 // This is the exact same implementation as dotnet 9, except we're using Random.Shared (XoShiro implementation) to fill
 // the counter-bits instead of relying on a legacy Ole32 interop call (which is a lot slower). We also rely on
-// HighResolutionTimestamp.Now.ToUnixTimeMilliseconds() to generate the timestamp, which is a lot faster than using
-// DateTimeOffset.Now.ToUnixTimeMilliseconds().
+// FastClock.UnixTimeMillisecondsNow() to generate the timestamp, which is a lot faster than
+// DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().
 // Random.Shared is thread-safe (a lock-free, per-thread Xoshiro), so Create()/Next() can be called concurrently.
 
 /* Benchmarks:
 | Method               | Mean     | Error    | StdDev   | Allocated |
 |--------------------- |---------:|---------:|---------:|----------:|
-| DotNetNewGuid        | 30.46 ns | 0.287 ns | 0.254 ns |         - | Guid.NewGuid() - Baseline
-| DotNetCreateVersion7 | 49.62 ns | 0.276 ns | 0.231 ns |         - | Guid.CreateVersion7()
-| CloudMeshUuid        | 19.91 ns | 0.142 ns | 0.133 ns |         - | Uuid.Create()
+| DotNetNewGuid        | 30.70 ns | 0.287 ns | 0.254 ns |         - | Guid.NewGuid() - Baseline
+| DotNetCreateVersion7 | 49.59 ns | 0.276 ns | 0.231 ns |         - | Guid.CreateVersion7()
+| CloudMeshUuid        | 20.08 ns | 0.142 ns | 0.133 ns |         - | Uuid.Create()
    
 We can see that this is the fastest approach to generating a v7 compatible UUID.
 In dotnet 10, Guid.CreateVersion7() uses DateTimeOffset.Now.ToUnixTimeMilliseconds() to generate the timestamp, which is a lot slower than using a high resolution timestamp.
@@ -26,13 +26,17 @@ Therein lies the reason why Guid.CreateVersion7() is so slow.
 /// Time sortable UUID v7 implementation
 /// </summary>
 /// <remarks>
+/// The timestamp comes from <see cref="FastClock"/>, which tracks the system clock (re-anchoring on NTP
+/// corrections and VM suspend/resume), so the time embedded in the UUID stays accurate while generation
+/// remains fast and allocation-free.
+///
 /// Based on the dotnet 9 implementation, but using Xoshiro256** for random generation, rather than the OLE32 interop call
 /// CoCreateGuid(out Guid g) used by Guid.NewGuid()
 /// The entire counter is random. We're not creating a 'node ID' for the first 12-42 bits.
 /// </remarks>
 public static class Uuid
 {
-    public static Guid Create() => Next(HighResolutionTimestamp.Now.ToUnixTimeMilliseconds());
+    public static Guid Create() => Next(FastClock.UnixTimeMillisecondsNow());
 
     [MethodImpl(MethodImplOptions.AggressiveOptimization)]
     public static unsafe Guid Next(long unixTimestampMilliseconds)

@@ -100,6 +100,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UuidBenchmarks", "benchmark
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.Uuid.Tests", "test\CloudMesh.Uuid.Tests\CloudMesh.Uuid.Tests.csproj", "{0DDE77F2-F435-405C-AA06-BB3238F723C0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.Timestamp.Tests", "test\CloudMesh.Timestamp.Tests\CloudMesh.Timestamp.Tests.csproj", "{4962E64F-1D30-4862-B75C-AA49115D131A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -530,6 +532,18 @@ Global
 		{0DDE77F2-F435-405C-AA06-BB3238F723C0}.Release|x64.Build.0 = Release|Any CPU
 		{0DDE77F2-F435-405C-AA06-BB3238F723C0}.Release|x86.ActiveCfg = Release|Any CPU
 		{0DDE77F2-F435-405C-AA06-BB3238F723C0}.Release|x86.Build.0 = Release|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Debug|x64.Build.0 = Debug|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Debug|x86.Build.0 = Debug|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Release|x64.ActiveCfg = Release|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Release|x64.Build.0 = Release|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Release|x86.ActiveCfg = Release|Any CPU
+		{4962E64F-1D30-4862-B75C-AA49115D131A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -573,6 +587,7 @@ Global
 		{03CCCCC8-E043-437E-9EE2-C2B8694E86F4} = {C60F40DA-B95F-4571-9983-8A342046D60A}
 		{09A4D61B-0C18-4092-8A6F-3270F60FCC4E} = {1C0A73BE-DB02-4803-99AE-647F691C2CA8}
 		{0DDE77F2-F435-405C-AA06-BB3238F723C0} = {C60F40DA-B95F-4571-9983-8A342046D60A}
+		{4962E64F-1D30-4862-B75C-AA49115D131A} = {C60F40DA-B95F-4571-9983-8A342046D60A}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1B0642CC-1BC5-42D7-9CE3-87B1D1080B36}

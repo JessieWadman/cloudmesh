@@ -3,27 +3,27 @@ using System.Runtime.CompilerServices;
 namespace System;
 
 /// <summary>
-/// Monotonic, fast timestamp.
-/// Immune to DST, Immune to NTP jumps.
-/// Ideal for timeouts, retries, cache expiration, sync intervals
+/// Monotonic, very cheap timestamp backed by <see cref="Environment.TickCount64"/> (millisecond resolution).
+/// Elapsed-time math (the operators) is immune to wall-clock, NTP and DST changes. Wall-clock projections
+/// use a fixed origin captured at process start (fast; may drift over a long-running process) — use the
+/// <c>ToExact…</c> variants when the projected time must track the system clock. Ideal for timeouts, retries,
+/// cache expiration and sync intervals.
 /// </summary>
 public readonly record struct Timestamp : IComparable<Timestamp>
 {
-    private const long TicksPerMillisecond = TimeSpan.TicksPerMillisecond;
-    private const long UnixEpochMilliseconds = 62135596800000L;
     private static readonly long OriginTickCount = Environment.TickCount64;
     private static readonly long OriginUnixMilliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-    
+
     private readonly long milliseconds;
-    
+
     private Timestamp(long milliseconds) => this.milliseconds = milliseconds;
-    
+
     public static Timestamp Now => new(Environment.TickCount64);
     public static readonly Timestamp Zero = new(0L);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static long operator -(Timestamp a, Timestamp b) => a.milliseconds - b.milliseconds;
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static long Subtract(Timestamp left, Timestamp right) => left - right;
 
@@ -32,58 +32,38 @@ public readonly record struct Timestamp : IComparable<Timestamp>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Timestamp Subtract(Timestamp left, long right) => left - right;
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Timestamp operator +(Timestamp a, long b) => new(a.milliseconds + b);
-    
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Timestamp Add(Timestamp left, long right) => left + right;
-    
-    private static DateTimeOffset ToExactUtcOffset(long timestamp)
-    {
-        var exactNow = DateTimeOffset.UtcNow;
-        var currentTicks = Environment.TickCount64;
-        
-        return exactNow.AddMilliseconds(timestamp - currentTicks);
-    }
 
+    /// <summary>Projects to Unix milliseconds using the fixed process-start origin (fast; may drift from the system clock).</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public long ToUnixTimeMilliseconds()
-        => OriginUnixMilliseconds + (milliseconds - OriginTickCount);
+    public long ToUnixTimeMilliseconds() => OriginUnixMilliseconds + (milliseconds - OriginTickCount);
 
+    /// <summary>Projects to Unix milliseconds by re-reading the current system clock (accurate; not drift-prone).</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public long ToExactUnixTimeMilliseconds() => ToDateTimeOffset().ToUnixTimeMilliseconds();
+    public long ToExactUnixTimeMilliseconds()
+        => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() + (milliseconds - Environment.TickCount64);
 
-    /// <summary>
-    /// Converts this timestamp to a UTC DateTimeOffset.
-    ///
-    /// Note: Conversion is performed using the current UTC clock and current
-    /// Environment.TickCount64 value. If the system clock has been adjusted
-    /// since this timestamp was sampled, the resulting DateTimeOffset reflects
-    /// the current understanding of UTC rather than the UTC time that was
-    /// reported when the timestamp was originally captured.
-    /// </summary>
+    /// <summary>Converts to a UTC <see cref="DateTimeOffset"/> using the fixed process-start origin (fast; may drift).</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public DateTimeOffset ToDateTimeOffset() => ToExactUtcOffset(milliseconds);
-    
-    public static bool operator <(Timestamp left, Timestamp right)
-        => left.milliseconds < right.milliseconds;
+    public DateTimeOffset ToDateTimeOffset() => DateTimeOffset.FromUnixTimeMilliseconds(ToUnixTimeMilliseconds());
 
-    public static bool operator <=(Timestamp left, Timestamp right)
-        => left.milliseconds <= right.milliseconds;
+    /// <summary>Converts to a UTC <see cref="DateTimeOffset"/> by re-reading the current system clock (accurate).</summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public DateTimeOffset ToExactDateTimeOffset() => DateTimeOffset.FromUnixTimeMilliseconds(ToExactUnixTimeMilliseconds());
 
-    public static bool operator >(Timestamp left, Timestamp right)
-        => left.milliseconds > right.milliseconds;
+    public static bool operator <(Timestamp left, Timestamp right) => left.milliseconds < right.milliseconds;
+    public static bool operator <=(Timestamp left, Timestamp right) => left.milliseconds <= right.milliseconds;
+    public static bool operator >(Timestamp left, Timestamp right) => left.milliseconds > right.milliseconds;
+    public static bool operator >=(Timestamp left, Timestamp right) => left.milliseconds >= right.milliseconds;
 
-    public static bool operator >=(Timestamp left, Timestamp right)
-        => left.milliseconds >= right.milliseconds;
-
-    public int CompareTo(Timestamp other) => this.milliseconds.CompareTo(other.milliseconds);
+    public int CompareTo(Timestamp other) => milliseconds.CompareTo(other.milliseconds);
 
     public override int GetHashCode() => milliseconds.GetHashCode();
 
-    public override string ToString()
-    {
-        return ToDateTimeOffset().ToString("O");
-    }
+    public override string ToString() => ToDateTimeOffset().ToString("O");
 }

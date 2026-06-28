@@ -17,7 +17,7 @@ dotnet add package CloudMesh.Variant
 | Package | What it gives you |
 |---|---|
 | **CloudMesh.Core** | Common utilities and allocation-conscious helpers (locks, throttling, fast parsing, buffered IO). |
-| **CloudMesh.Timestamp** | Monotonic, DST/NTP-immune timestamps (`Timestamp`, `HighResolutionTimestamp`) for intervals and timeouts. |
+| **CloudMesh.Timestamp** | Monotonic timestamps (`Timestamp`, `HighResolutionTimestamp`) plus `FastClock`, a lock-free, wall-clock-tracking clock. |
 | **CloudMesh.DataBlocks** | A lightweight, in-process actor/pipeline library built on `System.Threading.Channels`. |
 | **CloudMesh.Variant** | A boxing-free discriminated union (`Value`) for storing arbitrary value types without heap allocation. |
 | **CloudMesh.Uuid** | A very fast UUID v7 (RFC 9562) generator. |
@@ -49,15 +49,21 @@ Common utilities and optimization helpers.
 
 ## Timestamp
 
-Monotonic, allocation-free timestamps for measuring intervals, timeouts, retries and cache expiry. Unlike
-`DateTimeOffset.UtcNow`, they don't jump on wall-clock, NTP or DST changes, so elapsed-time math stays sane.
+Cheap, allocation-free clocks for intervals, timeouts and timestamps. The two timestamp structs are
+**monotonic** — their elapsed-time math is immune to wall-clock, NTP and DST changes — and project to wall
+time through a fixed process-start origin (fast), with `ToExact…` variants that re-read the system clock when
+you need precision. `FastClock` is the accurate counterpart: it tracks the system clock by re-anchoring
+periodically, lock-free.
 
-| Class | Description |
-|---|---|
-| `Timestamp` | A relative timestamp based on `Environment.TickCount64`. The cheapest option; millisecond resolution. |
-| `HighResolutionTimestamp` | Based on `Stopwatch.GetTimestamp()` — higher resolution and still cheap. Converts to/from Unix time and `DateTimeOffset` using a captured origin, with an `…Exact…` variant that re-anchors to the current clock when you need it. |
+| Type | Backed by | Use it for |
+|---|---|---|
+| `Timestamp` | `Environment.TickCount64` | The cheapest monotonic stamp (ms resolution) — timeouts, retries, cache expiry. |
+| `HighResolutionTimestamp` | `Stopwatch.GetTimestamp()` | Higher-resolution monotonic stamp; same uses when you need sub-millisecond intervals. |
+| `FastClock` | `Stopwatch` + periodic re-anchor | A fast, always-accurate wall-clock reading — `UnixTimeMillisecondsNow()` / `DateTimeOffsetNow()` — re-anchored at most once every 5 s (configurable via `AdjustInterval`). |
 
-`HighResolutionTimestamp` is what backs `Guid64`'s clock, giving it a fast, monotonic timestamp source.
+Both structs expose `ToUnixTimeMilliseconds()` / `ToDateTimeOffset()` (fast, origin-based) and
+`ToExactUnixTimeMilliseconds()` / `ToExactDateTimeOffset()` (re-read the clock). `HighResolutionTimestamp`
+backs `Guid64` (monotonic ordering); `FastClock` backs `Uuid` (accurate v7 timestamps).
 
 ## Data Blocks
 
