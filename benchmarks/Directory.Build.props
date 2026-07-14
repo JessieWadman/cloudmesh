@@ -1,0 +1,9 @@
+<Project>
+    <!-- Import the repo-root props, then narrow multi-targeting to net10.0 for benchmark projects. -->
+    <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+    <PropertyGroup>
+        <!-- Benchmark exes (and BenchmarkDotNet's auto-generated bootstrap project, which nests under
+             a benchmark's bin folder and inherits these props) must target a single framework. -->
+        <TargetFrameworks>net10.0</TargetFrameworks>
+    </PropertyGroup>
+</Project>

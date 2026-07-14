@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <!-- Override the solution-wide multi-target (net8;net9;net10) from Directory.Build.props. -->
+        <TargetFrameworks>net10.0</TargetFrameworks>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\CloudMesh.Mediator\CloudMesh.Mediator.csproj" />
+      <!-- Analyzers referenced via OutputItemType=Analyzer on a ProjectReference do NOT flow transitively;
+           reference the generator directly so it runs in this project (as a NuGet consumer would get it). -->
+      <ProjectReference Include="..\..\src\CloudMesh.Mediator.SourceGenerator\CloudMesh.Mediator.SourceGenerator.csproj"
+                        OutputItemType="Analyzer"
+                        ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="BenchmarkDotNet" />
+      <PackageReference Include="MediatR" />
+      <PackageReference Include="MessagePipe" />
+      <PackageReference Include="Mediator.Abstractions" />
+      <PackageReference Include="Mediator.SourceGenerator">
+        <PrivateAssets>all</PrivateAssets>
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      </PackageReference>
+    </ItemGroup>
+
+</Project>

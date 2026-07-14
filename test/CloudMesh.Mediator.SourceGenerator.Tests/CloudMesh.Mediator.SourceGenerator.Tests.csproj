@@ -1,0 +1,44 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <!-- Test project runs on a modern runtime; single TFM keeps the generator tests fast. -->
+        <TargetFramework>net10.0</TargetFramework>
+        <TargetFrameworks></TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <IsPackable>false</IsPackable>
+        <LangVersion>preview</LangVersion>
+
+        <!-- Inspect generated files on disk for the end-to-end packaging check. -->
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+
+        <!-- Microsoft.CodeAnalysis.CSharp 4.8 pulls a lower-bound-less DI dependency; the direct
+             reference below pins it. Suppress the transitive NU1604 (does not affect the analyzer). -->
+        <NoWarn>$(NoWarn);NU1604;NU1605</NoWarn>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" VersionOverride="[10.0,)" />
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+        <PackageReference Include="coverlet.collector">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- Reference the runtime library. Also referenced as an Analyzer so the generator runs in THIS
+             project, giving us an end-to-end behavioral test of AddCloudMeshMediatorGenerated. -->
+        <ProjectReference Include="..\..\src\CloudMesh.Mediator\CloudMesh.Mediator.csproj" />
+        <ProjectReference Include="..\..\src\CloudMesh.Mediator.SourceGenerator\CloudMesh.Mediator.SourceGenerator.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="true" />
+    </ItemGroup>
+
+</Project>

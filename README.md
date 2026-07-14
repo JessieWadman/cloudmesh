@@ -8,6 +8,7 @@ libraries you can pull in à la carte.
 ```bash
 dotnet add package CloudMesh.Core
 dotnet add package CloudMesh.DataBlocks
+dotnet add package CloudMesh.Mediator
 dotnet add package CloudMesh.Variant
 # ...etc
 ```
@@ -19,6 +20,7 @@ dotnet add package CloudMesh.Variant
 | **CloudMesh.Core** | Common utilities and allocation-conscious helpers (locks, throttling, fast parsing, buffered IO). |
 | **CloudMesh.Timestamp** | Monotonic timestamps (`Timestamp`, `HighResolutionTimestamp`) plus `FastClock`, a lock-free, wall-clock-tracking clock. |
 | **CloudMesh.DataBlocks** | A lightweight, in-process actor/pipeline library built on `System.Threading.Channels`. |
+| **CloudMesh.Mediator** | A fast, allocation-conscious mediator for in-process CQRS (requests, streams, notifications) with a source generator for box-free, reflection-free dispatch and MediatR-compatible shims. |
 | **CloudMesh.Variant** | A boxing-free discriminated union (`Value`) for storing arbitrary value types without heap allocation. |
 | **CloudMesh.Uuid** | A very fast UUID v7 (RFC 9562) generator. |
 | **CloudMesh.Guid64** | A roughly time-sortable 64-bit id (Snowflake-style) for database primary keys, with a compact 13-char Crockford Base32 string form. |
@@ -83,6 +85,45 @@ Great for building processing pipelines and background workers.
 | `DataBlockScheduler` | Schedule message delivery to data blocks, with cancellation. Great for timeouts and wait patterns. |
 | `CaptureBlock` | Collect all received messages and list them. Mostly for unit-testing code that uses DataBlocks. |
 | `BackpressureMonitor` | A hook to identify backpressure buildup in pipelines. |
+
+## Mediator
+
+A fast, allocation-conscious mediator for in-process CQRS — send requests, stream responses, and publish
+notifications, with a pipeline for cross-cutting behaviors. A drop-in-minded alternative to MediatR (which moved
+to commercial licensing), built around a Roslyn source generator so dispatch is box-free and registration is
+reflection-free.
+
+```csharp
+public readonly record struct GetUser(int Id) : IRequest<User>;
+
+public sealed class GetUserHandler : IRequestHandler<GetUser, User>
+{
+    public ValueTask<User> HandleAsync(GetUser request, CancellationToken ct) => ...;
+}
+
+// Register (scans the assembly); or use the generated, reflection-free AddCloudMeshMediatorGenerated…() for AOT/trim:
+services.AddCloudMeshMediator(o => o.RegisterServicesFromAssemblyContaining<GetUser>());
+
+// Send — with the generator referenced this binds a box-free overload automatically:
+User user = await mediator.SendAsync(new GetUser(42));
+```
+
+| Feature | Notes |
+|---|---|
+| **Requests / streams / notifications** | `IRequest<T>` (single response), `IStreamRequest<T>` (`IAsyncEnumerable<T>`), `INotification` (fan-out to many handlers). |
+| **Pipeline behaviors** | `IPipelineBehavior<,>` / `IStreamPipelineBehavior<,>` for validation, logging, retries, transactions — including open generics. |
+| **Source generator** | Compile-time handler registration (no reflection, AOT/trim-clean), per-request box-free `SendAsync(in request)` overloads, and diagnostics (missing/duplicate handler, boxing sends, shim usage). |
+| **MediatR-compatible shims** | `Send`/`Publish`/`CreateStream` methods and `Handle`/`Task` handler shapes, so most MediatR code ports by swapping `using` directives. |
+| **Distributed seam** | A pluggable transport abstraction for out-of-process notification delivery; network transports (e.g. NATS) plug in separately. |
+
+Everything is `ValueTask`-based. On the box-free path a send allocates nothing and dispatches in the low-nanosecond
+range — well ahead of reflection-based mediators like MediatR on both latency and allocation (which also allocate
+hundreds of bytes per send and publish). Compile-time diagnostics default to `Info`, so they never break a
+`TreatWarningsAsErrors` build; opt into stricter enforcement via `.editorconfig` — see
+[docs/diagnostics.md](docs/diagnostics.md).
+
+**→ Full documentation, use cases, quick start, and the MediatR migration guide:
+[src/CloudMesh.Mediator/README.md](src/CloudMesh.Mediator/README.md).**
 
 ## Variant
 

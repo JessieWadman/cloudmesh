@@ -11,14 +11,29 @@
   
   <ItemGroup>
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0" />
+
+    <!-- Roslyn for the source generator. Pinned to 4.8.0 (ships with .NET SDK 8.0.100+) so the analyzer
+         loads on the widest range of consumer SDKs. Analyzers must target netstandard2.0. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" />
     <PackageVersion Include="Microsoft.Extensions.ObjectPool" Version="$(MicrosoftExtensionsVersion)" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="$(MicrosoftExtensionsVersion)" />
     
     <PackageVersion Include="AWSSDK.DynamoDBv2" Version="[4.0.21,)" />
     <PackageVersion Include="Npgsql" Version="[8.0.3,)" />
 
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="BenchmarkDotNet.Annotations" Version="0.15.8" />
+
+    <!-- Mediator benchmark comparison packages -->
+    <!-- MediatR 12.5.0: last Apache-2.0 (free/OSS) release. 13.0+ is dual-licensed (RPL-1.5 + commercial). -->
+    <PackageVersion Include="MediatR" Version="12.5.0" />
+    <!-- MessagePipe 1.8.1 (Cysharp, MIT): latest release. -->
+    <PackageVersion Include="MessagePipe" Version="1.8.1" />
+    <!-- martinothamar/Mediator 3.0.2 (MIT): latest stable source-generator mediator. -->
+    <PackageVersion Include="Mediator.Abstractions" Version="3.0.2" />
+    <PackageVersion Include="Mediator.SourceGenerator" Version="3.0.2" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="[3.0,)" />

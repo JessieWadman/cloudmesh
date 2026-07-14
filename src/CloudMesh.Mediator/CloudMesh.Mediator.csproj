@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <Description>Fast, allocation-conscious Mediator/message-broker for CQRS. Compile-time-friendly, zero-boxing dispatch with MediatR-compatible shims.</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+    </PropertyGroup>
+
+    <!-- Package-scoped readme shown on nuget.org. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    </ItemGroup>
+
+    <!-- Reference the source generator as an analyzer so it flows to consumers of this package
+         and emits registration/overloads/diagnostics into whatever project references the runtime. -->
+    <ItemGroup>
+        <ProjectReference Include="..\CloudMesh.Mediator.SourceGenerator\CloudMesh.Mediator.SourceGenerator.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
+    </ItemGroup>
+
+    <!-- Package the generator dll into the analyzer path of THIS package. -->
+    <ItemGroup>
+        <None Include="..\CloudMesh.Mediator.SourceGenerator\bin\$(Configuration)\netstandard2.0\CloudMesh.Mediator.SourceGenerator.dll"
+              Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    </ItemGroup>
+
+</Project>
