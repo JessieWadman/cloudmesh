@@ -80,6 +80,11 @@ It can be thought of as an actor framework that went on a diet to become a light
 Allows for easy, high-throughput, in-process processing using fan-out, fan-in, aggregation, buffering, round-robin and similar patterns.
 Great for building processing pipelines and background workers.
 
+On top of the blocks there is a fluent, Rx/LINQ-style **pipeline builder** (`Pipeline.From(...)` / `OnManualPush<T>()`
+→ `Map`/`Where`/`Buffer`/`Aggregate`/`Skip`/`Take`/`Distinct`/`SelectMany`/`Scan`/… → `To(...)`) with backpressure,
+drain-on-dispose, channel source/sink, and an error model (`OnError` resilient handler or a faulting `Completion`
+task). See the [package README](src/CloudMesh.DataBlocks/README.md) for the full operator list and examples.
+
 | Class | Description |
 |---|---|
 | `DataBlock` | Generic consumer. Decouples receiving and consuming messages. |

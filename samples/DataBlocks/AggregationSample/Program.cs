@@ -17,7 +17,7 @@ for (var i = 0; i < 1000; i++)
 }
 
 // Message containing metric to aggregate
-record HttpClientRequestDurationMetric(long RequestDurationInMilliseconds);
+internal readonly record struct HttpClientRequestDurationMetric(long RequestDurationInMilliseconds);
 
 // The aggregator could publish metrics to for example AWS Cloudwatch, or to a Prometheus database, where each
 // store operation has an associated cost, or performance overhead. Therefore we don't want to store each individual

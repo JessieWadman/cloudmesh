@@ -4,6 +4,7 @@
 // want a mock consumer, that you can then Assert which messages were sent to it.
 
 var capture = new CaptureBlock();
+
 await using (var producer = new Producer(capture))
 {
     await producer.SubmitAsync("hello world", null);
