@@ -5,19 +5,43 @@ using CloudMesh.Persistence.DynamoDB.Helpers;
 
 namespace CloudMesh.Persistence.DynamoDB.Builders
 {
+    /// <summary>
+    /// A patch step within a transaction. Describe the mutation/conditions via the inherited
+    /// <see cref="IUpdateExpressionBuilder{TEntity,TBuilder}"/> verbs, then call <see cref="Build"/> to fold this
+    /// step back into the parent <see cref="ITransactWriteBuilder"/>.
+    /// </summary>
     public interface ITransactWritePatchBuilder<T> : IUpdateExpressionBuilder<T, ITransactWritePatchBuilder<T>>
     {
+        /// <summary>Adds this patch to the transaction and returns the parent builder for further chaining.</summary>
         ITransactWriteBuilder Build();
     }
 
+    /// <summary>
+    /// Fluent builder for an atomic, multi-item, multi-table write (DynamoDB <c>TransactWriteItems</c>). Queue
+    /// saves, deletes and conditional patches across tables, then commit them all-or-nothing with
+    /// <see cref="ExecuteAsync"/>.
+    /// </summary>
     public interface ITransactWriteBuilder
     {
+        /// <summary>Queues one or more items to be put in the given table.</summary>
         ITransactWriteBuilder Save<T>(string tableName, params T[] items);
+
+        /// <summary>Begins a conditional patch of the item whose key is taken from the given key entity.</summary>
         ITransactWritePatchBuilder<T> Patch<T>(string tableName, T recordKey);
+
+        /// <summary>Begins a conditional patch of the item with the given hash key.</summary>
         ITransactWritePatchBuilder<T> Patch<T>(string tableName, DynamoDBValue hashKey);
+
+        /// <summary>Begins a conditional patch of the item with the given composite (hash + range) key.</summary>
         ITransactWritePatchBuilder<T> Patch<T>(string tableName, DynamoDBValue hashKey, DynamoDBValue rangeKey);
+
+        /// <summary>Queues deletes by hash key.</summary>
         ITransactWriteBuilder Delete<T>(string tableName, params DynamoDBValue[] hashKeys);
+
+        /// <summary>Queues deletes by entity key.</summary>
         ITransactWriteBuilder Delete<T>(string tableName, params T[] items);
+
+        /// <summary>Queues deletes by composite (hash + range) key.</summary>
         ITransactWriteBuilder Delete<T>(string tableName, params (DynamoDBValue HashKey, DynamoDBValue RangeKey)[] keys);
         /// <summary>
         /// Executes the transactions

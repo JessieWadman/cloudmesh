@@ -2,8 +2,14 @@
 
 namespace System
 {
+    /// <summary>
+    /// Extension helpers for <see cref="IAsyncEnumerable{T}"/>, <see cref="Task"/>, and <see cref="ValueTask"/>:
+    /// materializing async sequences, simple <c>Skip</c>/<c>Take</c>, and turning cancellation into a sentinel
+    /// value instead of an exception.
+    /// </summary>
     public static class AsyncExtensions
     {
+        /// <summary>Enumerates the sequence to completion and returns its elements as a <see cref="List{T}"/>.</summary>
         public static async Task<List<T>> ToListAsync<T>(this IAsyncEnumerable<T> enumerable)
         {
             List<T> items = new();
@@ -15,9 +21,13 @@ namespace System
             return items;
         }
         
+        /// <summary>Enumerates the sequence to completion and returns its elements as an array.</summary>
         public static async Task<T[]> ToArrayAsync<T>(this IAsyncEnumerable<T> enumerable)
             => (await ToListAsync(enumerable)).ToArray();
-        
+
+        /// <summary>Bypasses the first <paramref name="count"/> elements of an async sequence and streams the rest.</summary>
+        /// <param name="source">The sequence to skip over.</param>
+        /// <param name="count">The number of leading elements to skip.</param>
         public static async IAsyncEnumerable<T> Skip<T>(this IAsyncEnumerable<T> source, int count)
         {
             var itemsSkipped = 0;
@@ -49,6 +59,9 @@ namespace System
             }
         }
 
+        /// <summary>Streams at most the first <paramref name="count"/> elements of an async sequence, then stops.</summary>
+        /// <param name="source">The sequence to take from.</param>
+        /// <param name="count">The maximum number of elements to yield.</param>
         public static async IAsyncEnumerable<T> Take<T>(this IAsyncEnumerable<T> source, int count)
         {
             var itemsReturned = 0;
@@ -60,6 +73,10 @@ namespace System
             }
         }
 
+        /// <summary>
+        /// Awaits the task, returning <see langword="false"/> if it is cancelled instead of throwing
+        /// <see cref="OperationCanceledException"/>, and <see langword="true"/> if it completes.
+        /// </summary>
         public static ValueTask<bool> ReturnFalseOnCancellation(this ValueTask valueTask)
         {
             if (valueTask.IsCanceled)
@@ -84,6 +101,12 @@ namespace System
             }
         }
 
+        /// <summary>
+        /// Awaits the task, returning <paramref name="cancellationValue"/> if it is cancelled instead of throwing
+        /// <see cref="OperationCanceledException"/>; otherwise returns the task's result.
+        /// </summary>
+        /// <param name="valueTask">The task to await.</param>
+        /// <param name="cancellationValue">The value to return if the task is cancelled.</param>
         public static ValueTask<T> ReturnOnCancellation<T>(this ValueTask<T> valueTask, T cancellationValue)
         {
             if (valueTask.IsCanceled)
@@ -106,6 +129,10 @@ namespace System
             }
         }
 
+        /// <summary>
+        /// Awaits the task, returning <see langword="false"/> if it is cancelled instead of throwing
+        /// <see cref="OperationCanceledException"/>, and <see langword="true"/> if it completes.
+        /// </summary>
         public static async ValueTask<bool> ReturnFalseOnCancellation(this Task task)
         {
             if (task.IsCanceled)
@@ -124,6 +151,12 @@ namespace System
             }
         }
 
+        /// <summary>
+        /// Awaits the task, returning <paramref name="cancellationValue"/> if it is cancelled instead of throwing
+        /// <see cref="OperationCanceledException"/>; otherwise returns the task's result.
+        /// </summary>
+        /// <param name="task">The task to await.</param>
+        /// <param name="cancellationValue">The value to return if the task is cancelled.</param>
         public static async ValueTask<T> ReturnOnCancellation<T>(this Task<T> task, T cancellationValue)
         {
             if (task.IsCanceled)
@@ -141,6 +174,14 @@ namespace System
             }
         }
 
+        /// <summary>
+        /// Infrastructure helper that adapts a <see cref="ValueTask{TResult}"/> of <see cref="object"/> to the
+        /// requested awaitable type — <see cref="Task"/>, <see cref="ValueTask"/>, or their generic forms — for
+        /// dispatch scenarios where the concrete result type is only known at runtime.
+        /// </summary>
+        /// <param name="valueTask">The source task carrying a boxed result.</param>
+        /// <param name="taskType">The awaitable type to produce.</param>
+        /// <returns>An awaitable of <paramref name="taskType"/> that yields the (converted) result.</returns>
         public static object ConvertToTaskType(this ValueTask<object?> valueTask, Type taskType)
         {
             if (taskType == typeof(ValueTask))
@@ -179,6 +220,12 @@ namespace System
             return (T)result;
         }
 
+        /// <summary>
+        /// Infrastructure helper that normalizes a value that may be a <see cref="Task"/>, a <see cref="ValueTask"/>,
+        /// their generic forms, or a plain value into a single <see cref="Task{TResult}"/> of <see cref="object"/>.
+        /// </summary>
+        /// <param name="value">A task, value-task, or plain value.</param>
+        /// <returns>A task yielding the (possibly awaited) result as a boxed object.</returns>
         public static Task<object?> ToObjectTask(object? value)
         {
             if (value is null)

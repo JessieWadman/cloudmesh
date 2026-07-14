@@ -2,10 +2,23 @@
 
 namespace CloudMesh.Persistence.DynamoDB.Builders
 {
+    /// <summary>
+    /// Fluent builder for a batched write. Queued puts and deletes are chunked into DynamoDB's 25-item batches
+    /// automatically on <see cref="ExecuteAsync"/>. Batch writes are not transactional — use
+    /// <see cref="ITransactWriteBuilder"/> when atomicity across items is required.
+    /// </summary>
     public interface IBatchWriteBuilder<in T>
     {
+        /// <summary>Queues one or more items to be put (created or overwritten).</summary>
+        /// <param name="items">The items to save.</param>
         IBatchWriteBuilder<T> Save(params T[] items);
+
+        /// <summary>Queues one or more items to be deleted (by their keys).</summary>
+        /// <param name="items">The items to delete.</param>
         IBatchWriteBuilder<T> Delete(params T[] items);
+
+        /// <summary>Executes all queued operations.</summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
         ValueTask ExecuteAsync(CancellationToken cancellationToken);
     }
 

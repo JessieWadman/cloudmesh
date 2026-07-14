@@ -5,6 +5,12 @@
         <Nullable>enable</Nullable>
         <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
         <Description>Network-wide mutexes using various types of persistence storages for backing. Allows processes across the network/cluster to acquire arbitrary, exclusive locks</Description>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
     </PropertyGroup>
-    
+
+    <!-- Package-scoped readme shown on nuget.org. -->
+    <ItemGroup>
+        <None Include="README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
+
 </Project>

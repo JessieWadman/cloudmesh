@@ -72,6 +72,7 @@ namespace System
     {
         private readonly long value;
 
+        /// <summary>The zero-valued <see cref="Guid64"/> (<c>0</c>). Use as a default/sentinel; never returned by <see cref="NewGuid"/>.</summary>
         public static Guid64 Empty => new();
 
         /// <summary>
@@ -93,19 +94,41 @@ namespace System
 
         private Guid64(long value) => this.value = value;
 
+        /// <summary>Initializes an empty (<c>0</c>) <see cref="Guid64"/>. Use <see cref="NewGuid"/> to generate a real id.</summary>
         public Guid64() => value = 0;
 
+        /// <summary>
+        /// Generates a new, roughly time-sortable id. Thread-safe and monotonic within a process: it will spin to
+        /// the next millisecond rather than emit an out-of-order or duplicate value.
+        /// </summary>
+        /// <returns>A fresh <see cref="Guid64"/> combining timestamp, <see cref="NodeId"/>, and per-millisecond sequence.</returns>
+        /// <exception cref="InvalidOperationException">
+        /// The configured epoch has expired (41-bit timestamp overflow, ~69 years after 2015-01-01), or the system
+        /// clock moved backwards far enough that ordering cannot be preserved.
+        /// </exception>
         public static Guid64 NewGuid() => Engine.Next();
 
+        /// <summary>Implicitly unwraps the id to its underlying signed 64-bit value (sortable by creation time).</summary>
         public static implicit operator long(Guid64 guid) => guid.value;
+        /// <summary>Implicitly wraps a raw signed 64-bit value as a <see cref="Guid64"/> (no validation).</summary>
         public static implicit operator Guid64(long value) => new(value);
 
+        /// <summary>The underlying signed 64-bit value. Equivalent to the implicit <see cref="long"/> conversion.</summary>
         public long Value => value;
 
+        /// <summary>Returns the default Crockford Base32 form (fixed-width, 13 characters, lexically sortable).</summary>
         public override string ToString() => ToString("B", CultureInfo.InvariantCulture);
 
+        /// <inheritdoc cref="ToString(string?, IFormatProvider?)"/>
         public string ToString(string? format) => ToString(format, CultureInfo.InvariantCulture);
 
+        /// <summary>Formats the id.</summary>
+        /// <param name="format">
+        /// <c>B</c> (default) Crockford Base32, fixed-width 13 chars, lexically sortable; <c>D</c> decimal;
+        /// <c>X</c>/<c>x</c> hexadecimal. <see langword="null"/> or empty means <c>B</c>.
+        /// </param>
+        /// <param name="formatProvider">Culture used for the <c>D</c>/<c>X</c> numeric forms; ignored for <c>B</c>.</param>
+        /// <exception cref="FormatException"><paramref name="format"/> is not one of <c>B</c>, <c>D</c>, or <c>X</c>.</exception>
         public string ToString(string? format, IFormatProvider? formatProvider)
         {
             format = NormalizeFormat(format);
@@ -116,6 +139,12 @@ namespace System
             return value.ToString(format, formatProvider);
         }
 
+        /// <summary>Tries to write the formatted id into <paramref name="destination"/> without allocating.</summary>
+        /// <param name="destination">Target buffer. The <c>B</c> form needs at least 13 characters.</param>
+        /// <param name="charsWritten">The number of characters written on success; otherwise <c>0</c>.</param>
+        /// <param name="format">Same options as <see cref="ToString(string?, IFormatProvider?)"/>; empty means <c>B</c>.</param>
+        /// <param name="provider">Culture for the <c>D</c>/<c>X</c> forms; ignored for <c>B</c>.</param>
+        /// <returns><see langword="true"/> if the id fit; <see langword="false"/> if <paramref name="destination"/> was too small.</returns>
         public bool TryFormat(
             Span<char> destination,
             out int charsWritten,
@@ -140,8 +169,12 @@ namespace System
             return value.TryFormat(destination, out charsWritten, f, provider);
         }
 
+        /// <summary>Writes the fixed-width 13-character Crockford Base32 form into <paramref name="destination"/> (zero-alloc).</summary>
+        /// <param name="destination">Target buffer; must be at least 13 characters long.</param>
+        /// <exception cref="ArgumentException"><paramref name="destination"/> is shorter than 13 characters.</exception>
         public void ToBase32String(Span<char> destination) => Base32.Format(value, destination);
 
+        /// <summary>Returns the fixed-width 13-character Crockford Base32 form. Because the width is fixed, these strings sort lexically in the same order as the ids.</summary>
         public string ToBase32String()
         {
             Span<char> buffer = stackalloc char[13];
@@ -194,24 +227,34 @@ namespace System
         }
 
         // IParsable<Guid64> / ISpanParsable<Guid64> — the format provider is not used.
+        /// <inheritdoc/>
         public static Guid64 Parse(string s, IFormatProvider? provider) => Parse(s);
 
+        /// <inheritdoc/>
         public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out Guid64 result)
             => TryParse(s, out result);
 
+        /// <inheritdoc/>
         public static Guid64 Parse(ReadOnlySpan<char> s, IFormatProvider? provider) => Parse(s);
 
+        /// <inheritdoc/>
         public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, out Guid64 result)
             => TryParse(s, out result);
 
+        /// <summary>Indicates whether two ids have the same underlying value.</summary>
         public bool Equals(Guid64 other) => value == other.value;
 
+        /// <inheritdoc/>
         public override bool Equals(object? obj) => obj is Guid64 guid && Equals(guid);
 
+        /// <inheritdoc/>
         public override int GetHashCode() => value.GetHashCode();
 
+        /// <summary>Orders ids by their underlying value, which is (approximately) chronological order of creation.</summary>
         public int CompareTo(Guid64 other) => value.CompareTo(other.value);
 
+        /// <inheritdoc cref="CompareTo(Guid64)"/>
+        /// <exception cref="ArgumentException"><paramref name="obj"/> is not a <see cref="Guid64"/>.</exception>
         public int CompareTo(object? obj)
         {
             if (obj is null)
@@ -223,27 +266,45 @@ namespace System
             throw new ArgumentException($"Object must be of type {nameof(Guid64)}.", nameof(obj));
         }
 
+        /// <summary>Equality by underlying value.</summary>
         public static bool operator ==(Guid64 left, Guid64 right) => left.value == right.value;
+        /// <summary>Inequality by underlying value.</summary>
         public static bool operator !=(Guid64 left, Guid64 right) => left.value != right.value;
 
+        /// <summary>Equality between an id's underlying value and a <c>long</c>.</summary>
         public static bool operator ==(Guid64 left, long right) => left.value == right;
+        /// <summary>Inequality between an id's underlying value and a <c>long</c>.</summary>
         public static bool operator !=(Guid64 left, long right) => left.value != right;
+        /// <summary>Equality between a <c>long</c> and an id's underlying value.</summary>
         public static bool operator ==(long left, Guid64 right) => left == right.value;
+        /// <summary>Inequality between a <c>long</c> and an id's underlying value.</summary>
         public static bool operator !=(long left, Guid64 right) => left != right.value;
 
+        /// <summary>Orders two ids by underlying value (approximately chronological).</summary>
         public static bool operator <(Guid64 left, Guid64 right) => left.value < right.value;
+        /// <summary>Orders two ids by underlying value (approximately chronological).</summary>
         public static bool operator >(Guid64 left, Guid64 right) => left.value > right.value;
+        /// <summary>Orders two ids by underlying value (approximately chronological).</summary>
         public static bool operator <=(Guid64 left, Guid64 right) => left.value <= right.value;
+        /// <summary>Orders two ids by underlying value (approximately chronological).</summary>
         public static bool operator >=(Guid64 left, Guid64 right) => left.value >= right.value;
 
+        /// <summary>Orders an id's underlying value against a <c>long</c>.</summary>
         public static bool operator <(Guid64 left, long right) => left.value < right;
+        /// <summary>Orders an id's underlying value against a <c>long</c>.</summary>
         public static bool operator >(Guid64 left, long right) => left.value > right;
+        /// <summary>Orders an id's underlying value against a <c>long</c>.</summary>
         public static bool operator <=(Guid64 left, long right) => left.value <= right;
+        /// <summary>Orders an id's underlying value against a <c>long</c>.</summary>
         public static bool operator >=(Guid64 left, long right) => left.value >= right;
 
+        /// <summary>Orders a <c>long</c> against an id's underlying value.</summary>
         public static bool operator <(long left, Guid64 right) => left < right.value;
+        /// <summary>Orders a <c>long</c> against an id's underlying value.</summary>
         public static bool operator >(long left, Guid64 right) => left > right.value;
+        /// <summary>Orders a <c>long</c> against an id's underlying value.</summary>
         public static bool operator <=(long left, Guid64 right) => left <= right.value;
+        /// <summary>Orders a <c>long</c> against an id's underlying value.</summary>
         public static bool operator >=(long left, Guid64 right) => left >= right.value;
 
         private static string NormalizeFormat(string? format)
@@ -280,6 +341,15 @@ namespace System
             };
         }
 
+        /// <summary>
+        /// The low-level Snowflake id generator behind <see cref="Guid64.NewGuid"/>. Exposed for advanced
+        /// scenarios; most callers should use <see cref="Guid64.NewGuid"/> and <see cref="Guid64.NodeId"/> instead.
+        /// </summary>
+        /// <remarks>
+        /// Layout of the 64-bit value: 41 bits timestamp (ms since a 2015-01-01 epoch, ~69 years of range) ·
+        /// 10 bits node id (0–1023 machines) · 12 bits sequence (4096 ids per node per millisecond). Generation
+        /// is serialized by a lock and is monotonic within the process.
+        /// </remarks>
         public static class Engine
         {
             // Twitter Snowflake
@@ -313,6 +383,8 @@ namespace System
             private static long _lastTimestamp = -1L;
             private static long _sequence = 0L;
 
+            /// <summary>The node id (0–1023) embedded in generated ids. See <see cref="Guid64.NodeId"/>.</summary>
+            /// <exception cref="ArgumentOutOfRangeException">The value is outside 0–1023.</exception>
             public static int NodeId
             {
                 [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -328,6 +400,8 @@ namespace System
                 }
             }
 
+            /// <summary>Generates the next raw 64-bit id. Thread-safe; backs <see cref="Guid64.NewGuid"/>.</summary>
+            /// <exception cref="InvalidOperationException">The epoch expired, or the clock moved backwards unrecoverably.</exception>
             public static long Next()
             {
                 lock (Sync)

@@ -9,15 +9,29 @@ using System.Collections;
 namespace CloudMesh.Utils
 {
     /// <summary>
-    /// 32 bit Murmur3 Hash implementation
+    /// A streaming 32-bit MurmurHash implementation producing well-distributed <see cref="int"/> hash codes for
+    /// strings, arrays, and sets.
     /// </summary>
     /// <remarks>
-    /// All credits go to Aronontheweb
-    /// https://github.com/akkadotnet/akka.net
+    /// <para>
+    /// Adapted from the <see href="https://github.com/akkadotnet/akka.net">Akka.NET</see> project
+    /// (original author: Aaron Stannard / "Aaronontheweb"), under the Apache 2.0 license. All credit for the
+    /// implementation goes to the Akka.NET contributors.
+    /// </para>
+    /// <para>
+    /// The convenience entry points are <see cref="StringHash"/>, <see cref="ArrayHash{T}"/>,
+    /// <see cref="ByteHash"/>, and <see cref="SymmetricHash{T}"/>. The lower-level <see cref="StartHash"/> /
+    /// <see cref="ExtendHash"/> / <see cref="FinalizeHash"/> primitives let you fold values into a running
+    /// hash incrementally.
+    /// </para>
+    /// <para>
+    /// On .NET 9 and later this type is marked obsolete: prefer the BCL-native
+    /// <c>System.IO.Hashing.XxHash</c> family unless you need compatibility with previously computed values.
+    /// </para>
     /// </remarks>
 #if (NET9_0_OR_GREATER)
     [Obsolete("XxHash is BCL native, consider using that instead, unless you need compatibility")]
-#endif    
+#endif
     public static class MurmurHash
     {
         // Magic values used for MurmurHash's 32 bit hash.
@@ -53,7 +67,7 @@ namespace CloudMesh.Utils
         public const uint StartMagicB = HiddenMagicB;
 
         /// <summary>
-        /// TBD
+        /// Precomputes the fixed magic-integer streams used by <see cref="SymmetricHash{T}"/>.
         /// </summary>
         static MurmurHash()
         {
@@ -79,30 +93,30 @@ namespace CloudMesh.Utils
         }
 
         /// <summary>
-        /// Begin a new hash with a seed value.
+        /// Begins a new hash from a seed value.
         /// </summary>
-        /// <param name="seed">TBD</param>
-        /// <returns>TBD</returns>
+        /// <param name="seed">The initial seed to derive the starting hash state from.</param>
+        /// <returns>The initial hash state, ready to be fed to <see cref="ExtendHash"/>.</returns>
         public static uint StartHash(uint seed)
         {
             return seed ^ VisibleMagic;
         }
 
         /// <summary>
-        /// Given a magic integer from the first stream, compute the next
+        /// Given a magic integer from the first stream, computes the next one in that stream.
         /// </summary>
-        /// <param name="magicA">TBD</param>
-        /// <returns>TBD</returns>
+        /// <param name="magicA">The current magic integer from the first stream.</param>
+        /// <returns>The next magic integer in the first stream.</returns>
         public static uint NextMagicA(uint magicA)
         {
             return magicA * 5 + HiddenMixerA;
         }
 
         /// <summary>
-        /// Given a magic integer from the second stream, compute the next
+        /// Given a magic integer from the second stream, computes the next one in that stream.
         /// </summary>
-        /// <param name="magicB">TBD</param>
-        /// <returns>TBD</returns>
+        /// <param name="magicB">The current magic integer from the second stream.</param>
+        /// <returns>The next magic integer in the second stream.</returns>
         public static uint NextMagicB(uint magicB)
         {
             return magicB * 5 + HiddenMixerB;
@@ -122,10 +136,10 @@ namespace CloudMesh.Utils
         }
 
         /// <summary>
-        /// Once all hashes have been incorporated, this performs a final mixing.
+        /// Once all values have been incorporated, performs the final avalanche mixing to produce the hash.
         /// </summary>
-        /// <param name="hash">TBD</param>
-        /// <returns>TBD</returns>
+        /// <param name="hash">The accumulated hash state.</param>
+        /// <returns>The finalized, well-distributed 32-bit hash.</returns>
         public static uint FinalizeHash(uint hash)
         {
             var h = (hash ^ (hash >> 16));
@@ -152,20 +166,22 @@ namespace CloudMesh.Utils
         #endregion
 
         /// <summary>
-        /// Compute a high-quality hash of a byte array
+        /// Computes a high-quality 32-bit hash of a byte array.
         /// </summary>
-        /// <param name="b">TBD</param>
-        /// <returns>TBD</returns>
+        /// <param name="b">The bytes to hash.</param>
+        /// <returns>A 32-bit hash of the array contents.</returns>
         public static int ByteHash(byte[] b)
         {
             return ArrayHash(b);
         }
 
         /// <summary>
-        /// Compute a high-quality hash of an array
+        /// Computes a high-quality 32-bit hash of an array by folding each element's
+        /// <see cref="object.GetHashCode"/> into the running hash.
         /// </summary>
-        /// <param name="a">TBD</param>
-        /// <returns>TBD</returns>
+        /// <typeparam name="T">The element type of the array.</typeparam>
+        /// <param name="a">The array to hash.</param>
+        /// <returns>An order-sensitive 32-bit hash of the array's elements.</returns>
         public static int ArrayHash<T>(T[] a)
         {
             unchecked
@@ -186,10 +202,14 @@ namespace CloudMesh.Utils
         }
 
         /// <summary>
-        /// Compute high-quality hash of a string
+        /// Computes a high-quality, deterministic 32-bit hash of a string from its UTF-16 code units.
         /// </summary>
-        /// <param name="s">TBD</param>
-        /// <returns>TBD</returns>
+        /// <param name="s">The string to hash.</param>
+        /// <returns>A stable 32-bit hash of the string.</returns>
+        /// <remarks>
+        /// Unlike <see cref="string.GetHashCode()"/>, this is stable across processes and runtimes, which
+        /// makes it suitable for sharding, bucketing, and consistent-hashing scenarios.
+        /// </remarks>
         public static int StringHash(string s)
         {
             unchecked
@@ -217,9 +237,10 @@ namespace CloudMesh.Utils
         /// where the order of appearance of elements does not matter.
         /// This is useful for hashing sets, for example.
         /// </summary>
-        /// <param name="xs">TBD</param>
-        /// <param name="seed">TBD</param>
-        /// <returns>TBD</returns>
+        /// <typeparam name="T">The element type of the sequence.</typeparam>
+        /// <param name="xs">The elements to hash; iteration order does not affect the result.</param>
+        /// <param name="seed">A seed that scales with the element count to derive the starting state.</param>
+        /// <returns>An order-independent 32-bit hash of the elements.</returns>
         public static int SymmetricHash<T>(IEnumerable<T> xs, uint seed)
         {
             unchecked
@@ -252,11 +273,11 @@ namespace CloudMesh.Utils
         /// <summary>
         /// Converts a <see cref="BitArray"/> into an array of <see cref="byte"/>
         /// </summary>
-        /// <param name="arr">TBD</param>
+        /// <param name="arr">The bit array to convert; must contain exactly 8 bits.</param>
         /// <exception cref="ArgumentException">
         /// This exception is thrown if there aren't enough bits in the given <paramref name="arr"/> to make a byte.
         /// </exception>
-        /// <returns>TBD</returns>
+        /// <returns>A single-byte array holding the packed bits.</returns>
         public static byte[] ToBytes(this BitArray arr)
         {
             if (arr.Length != 8)

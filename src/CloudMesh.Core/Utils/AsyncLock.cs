@@ -3,9 +3,33 @@ using System.Runtime.ExceptionServices;
 
 namespace CloudMesh.Utils
 {
+    /// <summary>
+    /// A mutual-exclusion lock that can be awaited and is safe to re-enter from the same async flow. Unlike a bare
+    /// <see cref="SemaphoreSlim"/>, holding the lock across <c>await</c> points is expected, and a nested
+    /// <see cref="LockAsync(CancellationToken)"/> from within an already-held region does not deadlock.
+    /// </summary>
+    /// <remarks>
+    /// Acquire the lock with <see cref="LockAsync(CancellationToken)"/> (or the synchronous
+    /// <see cref="Lock(CancellationToken)"/>) and release it by disposing the returned handle — a <c>using</c>
+    /// block is the intended pattern. The <c>TryLock</c>/<c>TryLockAsync</c> overloads run a callback only if the
+    /// lock can be taken within a timeout (or before cancellation) and report whether it ran.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// private readonly AsyncLock _gate = new();
+    ///
+    /// public async Task UpdateAsync()
+    /// {
+    ///     using (await _gate.LockAsync())
+    ///     {
+    ///         // critical section; safe to await here
+    ///     }
+    /// }
+    /// </code>
+    /// </example>
     // Forked from https://github.com/neosmart/AsyncLock/blob/master/AsyncLock/AsyncLock.cs
     public class AsyncLock
-    {   
+    {
         private readonly SemaphoreSlim reentrancy = new(1, 1);
         private int reentrances = 0;
         // We are using this SemaphoreSlim like a posix condition variable.
@@ -31,6 +55,7 @@ namespace CloudMesh.Utils
 
         private static int ThreadId => Environment.CurrentManagedThreadId;
 
+        /// <summary>Creates a new, unheld asynchronous lock.</summary>
         public AsyncLock()
         {
         }
@@ -314,6 +339,12 @@ namespace CloudMesh.Utils
             }
         }
 
+        /// <summary>
+        /// Asynchronously acquires the lock, waiting until it becomes available. Dispose the returned handle to
+        /// release it (use a <c>using</c> block).
+        /// </summary>
+        /// <param name="ct">A token to cancel the wait for the lock.</param>
+        /// <returns>A disposable handle whose disposal releases the lock.</returns>
         // Make sure InnerLock.LockAsync() does not use await, because an async function triggers a snapshot of
         // the AsyncLocal value.
         public Task<IDisposable> LockAsync(CancellationToken ct = default)
@@ -323,6 +354,13 @@ namespace CloudMesh.Utils
             return @lock.ObtainLockAsync(ct);
         }
 
+        /// <summary>
+        /// Attempts to acquire the lock within <paramref name="timeout"/>. If successful, runs
+        /// <paramref name="callback"/> while holding the lock, then releases it.
+        /// </summary>
+        /// <param name="callback">The action to run while the lock is held.</param>
+        /// <param name="timeout">The maximum time to wait for the lock.</param>
+        /// <returns><see langword="true"/> if the lock was acquired and the callback ran; otherwise <see langword="false"/>.</returns>
         // Make sure InnerLock.LockAsync() does not use await, because an async function triggers a snapshot of
         // the AsyncLocal value.
         public Task<bool> TryLockAsync(Action callback, TimeSpan timeout)
@@ -355,6 +393,13 @@ namespace CloudMesh.Utils
                 });
         }
 
+        /// <summary>
+        /// Attempts to acquire the lock within <paramref name="timeout"/>. If successful, awaits
+        /// <paramref name="callback"/> while holding the lock, then releases it.
+        /// </summary>
+        /// <param name="callback">The asynchronous work to run while the lock is held.</param>
+        /// <param name="timeout">The maximum time to wait for the lock.</param>
+        /// <returns><see langword="true"/> if the lock was acquired and the callback ran; otherwise <see langword="false"/>.</returns>
         // Make sure InnerLock.LockAsync() does not use await, because an async function triggers a snapshot of
         // the AsyncLocal value.
         public Task<bool> TryLockAsync(Func<Task> callback, TimeSpan timeout)
@@ -390,6 +435,13 @@ namespace CloudMesh.Utils
                 }).Unwrap();
         }
 
+        /// <summary>
+        /// Attempts to acquire the lock, waiting until it is available or <paramref name="cancel"/> is triggered.
+        /// If successful, runs <paramref name="callback"/> while holding the lock, then releases it.
+        /// </summary>
+        /// <param name="callback">The action to run while the lock is held.</param>
+        /// <param name="cancel">A token that cancels the wait for the lock.</param>
+        /// <returns><see langword="true"/> if the lock was acquired and the callback ran; <see langword="false"/> if cancelled first.</returns>
         // Make sure InnerLock.LockAsync() does not use await, because an async function triggers a snapshot of
         // the AsyncLocal value.
         public Task<bool> TryLockAsync(Action callback, CancellationToken cancel)
@@ -422,6 +474,13 @@ namespace CloudMesh.Utils
                 });
         }
 
+        /// <summary>
+        /// Attempts to acquire the lock, waiting until it is available or <paramref name="cancel"/> is triggered.
+        /// If successful, awaits <paramref name="callback"/> while holding the lock, then releases it.
+        /// </summary>
+        /// <param name="callback">The asynchronous work to run while the lock is held.</param>
+        /// <param name="cancel">A token that cancels the wait for the lock.</param>
+        /// <returns><see langword="true"/> if the lock was acquired and the callback ran; <see langword="false"/> if cancelled first.</returns>
         // Make sure InnerLock.LockAsync() does not use await, because an async function triggers a snapshot of
         // the AsyncLocal value.
         public Task<bool> TryLockAsync(Func<Task> callback, CancellationToken cancel)
@@ -457,6 +516,12 @@ namespace CloudMesh.Utils
                 }).Unwrap();
         }
 
+        /// <summary>
+        /// Synchronously acquires the lock, blocking until it becomes available. Dispose the returned handle to
+        /// release it (use a <c>using</c> block).
+        /// </summary>
+        /// <param name="cancellationToken">A token to cancel the wait for the lock.</param>
+        /// <returns>A disposable handle whose disposal releases the lock.</returns>
         public IDisposable Lock(CancellationToken cancellationToken = default)
         {
             var @lock = new InnerLock(this, _asyncId.Value, ThreadId);
@@ -466,6 +531,13 @@ namespace CloudMesh.Utils
             return @lock.ObtainLock(cancellationToken);
         }
 
+        /// <summary>
+        /// Synchronously attempts to acquire the lock within <paramref name="timeout"/>. If successful, runs
+        /// <paramref name="callback"/> while holding the lock, then releases it.
+        /// </summary>
+        /// <param name="callback">The action to run while the lock is held.</param>
+        /// <param name="timeout">The maximum time to wait for the lock.</param>
+        /// <returns><see langword="true"/> if the lock was acquired and the callback ran; otherwise <see langword="false"/>.</returns>
         public bool TryLock(Action callback, TimeSpan timeout)
         {
             var @lock = new InnerLock(this, _asyncId.Value, ThreadId);

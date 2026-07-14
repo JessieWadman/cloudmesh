@@ -2,7 +2,7 @@
     <PropertyGroup>
         <LangVersion>preview</LangVersion>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-        <NoWarn>CS1591</NoWarn>        
+        <NoWarn>CS1591</NoWarn>
         <AnalysisLevel>latest</AnalysisLevel>
         <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>

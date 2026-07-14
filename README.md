@@ -36,6 +36,8 @@ dotnet add package CloudMesh.Variant
 
 ## Core
 
+→ **[Full documentation](src/CloudMesh.Core/README.md)**
+
 Common utilities and optimization helpers.
 
 | Class | Description |
@@ -50,6 +52,8 @@ Common utilities and optimization helpers.
 | `ConcurrentList`, `PriorityQueue` | Small concurrent/utility collections. |
 
 ## Timestamp
+
+→ **[Full documentation](src/CloudMesh.Timestamp/README.md)**
 
 Cheap, allocation-free clocks for intervals, timeouts and timestamps. The two timestamp structs are
 **monotonic** — their elapsed-time math is immune to wall-clock, NTP and DST changes — and project to wall
@@ -68,6 +72,8 @@ Both structs expose `ToUnixTimeMilliseconds()` / `ToDateTimeOffset()` (fast, ori
 backs `Guid64` (monotonic ordering); `FastClock` backs `Uuid` (accurate v7 timestamps).
 
 ## Data Blocks
+
+→ **[Full documentation](src/CloudMesh.DataBlocks/README.md)**
 
 Worker and producer/consumer patterns implemented using the highly performant channels from `System.Threading.Channels`.
 It can be thought of as an actor framework that went on a diet to become a light-weight library, with in-process-only patterns.
@@ -127,6 +133,8 @@ hundreds of bytes per send and publish). Compile-time diagnostics default to `In
 
 ## Variant
 
+→ **[Full documentation](src/CloudMesh.Variant/README.md)**
+
 A boxing-free discriminated union, `Value`, for stashing arbitrary value types in arrays or passing them
 as arguments without allocating. Storing a value type as `object` boxes it (a heap allocation); in
 high-throughput code — parsing records, then rearranging and bulk-loading them — that can mean millions of
@@ -150,6 +158,8 @@ and any user `struct` that fits inline (up to the union size) — including read
 
 ## Uuid
 
+→ **[Full documentation](src/CloudMesh.Uuid/README.md)**
+
 A very fast UUID v7 (RFC 9562) generator — time-ordered, so it sorts well as a database key. It fills the
 random bits from .NET's thread-safe `Random.Shared` (`xoshiro256**`) and takes its timestamp from
 `HighResolutionTimestamp`, sidestepping the `CoCreateGuid` interop and `DateTimeOffset.UtcNow` call that
@@ -162,6 +172,8 @@ Guid at = Uuid.Next(timestamp);       // or supply your own long ms / DateTimeOf
 ```
 
 ## Guid64
+
+→ **[Full documentation](src/CloudMesh.Guid64/README.md)**
 
 A roughly time-sortable 64-bit guid implementation based on Twitter's Snowflake algorithm.
 Great for client-generated primary keys, because database index operations are much faster on a 64-bit
@@ -181,6 +193,8 @@ hex. The timestamp comes from `HighResolutionTimestamp`, so the clock is fast an
 deployments, set `Guid64.NodeId` (0–1023) per node to avoid collisions.
 
 ## Base32
+
+→ **[Full documentation](src/CloudMesh.Base32/README.md)**
 
 A fast, zero-allocation [Crockford Base32](https://www.crockford.com/base32.html) codec (alphabet
 `0123456789ABCDEFGHJKMNPQRSTVWXYZ` — no `I`, `L`, `O` or `U`). Encoding writes directly into a
@@ -208,32 +222,51 @@ most-significant-symbol first, the encoded strings sort in the same order as the
 
 ## DotNotation
 
-Read and write values on nested object graphs using string paths, e.g. `GetValue(order, "customer.address.city")`
-and `SetValue(order, "customer.address.city", "Stockholm")`. Paths are compiled to expressions and cached, and
-collections are supported. Handy for mapping, templating and config-driven access.
+→ **[Full documentation](src/CloudMesh.DotNotation/README.md)**
+
+Read and write deeply nested object values by string path — `"Address.City"`, `"Orders[0].Lines[\"sku-1\"].Quantity"`
+— backed by compiled, cached expression-tree accessors rather than per-call reflection. Supports properties, list
+and array indexers, and typed dictionary keys (string/int/long/Guid/enum) in any chained combination; writes
+auto-create missing intermediate objects and entries. Handy for mapping, templating, and config-driven access.
 
 ## MurmurHash
 
-32-, 64- and 128-bit murmur hash implementations adapted from the Akka.NET project. Used by many of the other
-libraries here, but without taking a dependency on a massive framework. All credit for the original code goes
-to the Akka.NET authors.
+→ **[Full documentation](src/CloudMesh.MurmurHash/README.md)**
+
+Fast, well-distributed non-cryptographic MurmurHash in three variants — 32-bit (`MurmurHash`), 64-bit
+(`MurmurHash2`), and 128-bit (`MurmurHash3`) — producing values that are **stable across processes** (unlike
+`GetHashCode()`), so they suit sharding, fingerprints, and consistent hashing. Adapted from the Akka.NET project
+(32-bit) and Grassfed.MurmurHash3/SMHasher; all credit for the original code goes to those authors.
+
+> ⚠️ On **.NET 9+** these types are marked `[Obsolete]` in favor of the BCL `System.IO.Hashing.XxHash*` — prefer
+> those for new code unless you specifically need MurmurHash-compatible values.
 
 ## Network Mutexes
 
+Full docs: **[Abstractions](src/CloudMesh.NetworkMutex.Abstractions/README.md)** ·
+**[Postgres](src/CloudMesh.NetworkMutex.Postgres/README.md)** ·
+**[DynamoDB](src/CloudMesh.NetworkMutex.DynamoDB/README.md)**
+
 Normally, mutexes are scoped to a single machine. Network mutexes let you acquire arbitrary, exclusive locks
-across an entire cluster or network. Behind the scenes they "borrow" the locking mechanisms of a database
-engine — either row locks or soft locks, depending on the engine's capabilities. If you need cross-machine
-mutexes and already have a Postgres database, its exclusive lock mechanisms are very capable, and this library
-simply packages them as a convenient mutex. DynamoDB doesn't support row locking the way Postgres does, but it
-supports optimistic locking via update conditions, which is what the DynamoDB implementation uses.
+across an entire cluster or network by "borrowing" a database engine's own concurrency control. Install the
+abstraction plus a backend: **Postgres** blocks contenders server-side on a transaction's row lock and releases
+deterministically on commit/rollback (best when you already run Postgres and want blocking acquisition);
+**DynamoDB** uses optimistic conditional updates with a time-boxed lease that self-heals if a holder crashes
+(ideal on AWS/serverless without a relational database). Acquisition returns a handle — dispose it to release.
 
 ## Persistence DynamoDB
 
-An easy-to-use repository pattern for DynamoDB, with a fluent API to select secondary indexes and perform scans
-or partial updates. Also includes an in-memory implementation that behaves like the real one, for use in your
-unit-test projects.
+→ **[Full documentation](src/CloudMesh.Persistence.DynamoDB/README.md)**
+
+A lightweight repository pattern over DynamoDB: key lookups, conditional create/save/delete, fluent
+secondary-index queries and scans, in-place partial (patch) updates with optimistic conditions, and atomic
+cross-table transactions. Register with `AddDynamoDBPersistence()` and inject `IRepositoryFactory`. Ships
+`InMemoryRepositoryFactory` — a drop-in in-memory implementation of the same contract for unit tests with no
+AWS dependency.
 
 ## Temporal
+
+→ **[Full documentation](src/CloudMesh.Temporal/README.md)**
 
 A library for working with temporal data — records with a change history of values that have taken effect, as
 well as pending future changes. Each property of a temporal class can have multiple values, each with an

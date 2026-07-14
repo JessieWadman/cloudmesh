@@ -3,15 +3,23 @@ using System.Diagnostics.Contracts;
 namespace CloudMesh.Collections;
 
 /// <summary>
-/// Created:   2-14-2005 Niklas Borson (niklasb)
-/// PriorityQueue provides a stack-like interface, except that objects
-/// "pushed" in arbitrary order are "popped" in order of priority, i.e.,
-/// from least to greatest as defined by the specified comparer.
+/// A binary-heap priority queue. Objects <see cref="Push"/>ed in arbitrary order are read back in priority order
+/// (least to greatest as defined by the supplied <see cref="IComparer{T}"/>) via <see cref="Top"/> and
+/// <see cref="Pop"/>.
 /// </summary>
+/// <typeparam name="T">The type of item stored in the queue.</typeparam>
 /// <remarks>
-/// Push and Pop are each O(log N). Pushing N objects and them popping
-/// them all is equivalent to performing a heap sort and is O(N log N).
+/// <see cref="Push"/> and <see cref="Pop"/> are each O(log N); pushing N objects and popping them all is a heap
+/// sort at O(N log N). The item with the minimum value (per the comparer) is always at <see cref="Top"/>.
+/// Originally by Niklas Borson (2005); adapted from the .NET reference source.
 /// </remarks>
+/// <example>
+/// <code>
+/// var pq = new PriorityQueue&lt;int&gt;(capacity: 16, Comparer&lt;int&gt;.Default);
+/// pq.Push(5); pq.Push(1); pq.Push(3);
+/// while (pq.Count &gt; 0) { Console.WriteLine(pq.Top); pq.Pop(); }  // 1, 3, 5
+/// </code>
+/// </example>
 public class PriorityQueue<T>
 {
     // The _heap array represents a binary tree with the "shape" property.
@@ -52,6 +60,8 @@ public class PriorityQueue<T>
     /// <summary>
     /// Initializes a new instance of the <see cref="PriorityQueue{T}"/> class.
     /// </summary>
+    /// <param name="capacity">The initial capacity of the backing heap. Values ≤ 0 fall back to a small default.</param>
+    /// <param name="comparer">The comparer that defines priority order; the smallest item (per this comparer) is popped first.</param>
     /// <remarks>
     /// This code copied and adapted from https://referencesource.microsoft.com/#PresentationCore/Shared/MS/Internal/PriorityQueue.cs
     /// Includes fix for Pop() from https://stackoverflow.com/questions/44221454/bug-in-microsofts-internal-priorityqueuet
@@ -82,8 +92,9 @@ public class PriorityQueue<T>
     }
 
     /// <summary>
-    /// Adds an object to the priority queue.
+    /// Adds an object to the priority queue. O(log N).
     /// </summary>
+    /// <param name="value">The item to add.</param>
     public void Push(T value)
     {
         // Increase the size of the array if necessary.

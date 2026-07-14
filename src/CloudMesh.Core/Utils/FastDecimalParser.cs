@@ -3,13 +3,27 @@ using System.Runtime.CompilerServices;
 
 namespace System
 {
+    /// <summary>
+    /// The thousand- and decimal-separator characters used when parsing a decimal from text, so numbers written in
+    /// different locales can be parsed without allocating a <see cref="System.Globalization.CultureInfo"/>.
+    /// </summary>
+    /// <param name="ThousandSeparator">The character used to group thousands (ignored during parsing).</param>
+    /// <param name="DecimalSeparator">The character that separates the integral and fractional parts.</param>
     public record DecimalSeparators(char ThousandSeparator, char DecimalSeparator)
     {
+        /// <summary>US/UK convention: comma thousands, dot decimal (e.g. <c>1,234.56</c>).</summary>
         public static readonly DecimalSeparators EN_US = new(',', '.');
+        /// <summary>Swedish convention: space thousands, comma decimal (e.g. <c>1 234,56</c>).</summary>
         public static readonly DecimalSeparators SV_SE = new(' ', ',');
+        /// <summary>ISO convention: space thousands, dot decimal (e.g. <c>1 234.56</c>). This is the fastest path.</summary>
         public static readonly DecimalSeparators ISO = new(' ', '.');
     }
 
+    /// <summary>
+    /// High-performance parsing helpers. Currently provides <c>FastTryParseDecimal</c>, a low-allocation
+    /// alternative to <see cref="decimal.TryParse(System.ReadOnlySpan{char}, out decimal)"/> for hot paths such as
+    /// parsing large CSV or numeric feeds.
+    /// </summary>
     public static partial class OptimizationHelpers
     {
         private const int MaxDecimalLength = 29 + 1 + 29 + 9; // 29 integral digits, decimal separator, 28-29 decimal digits and 9 group separators
@@ -28,6 +42,14 @@ namespace System
             1000000000
         ];
 
+        /// <summary>
+        /// Attempts to parse a <see cref="decimal"/> from <paramref name="value"/> using the given separators,
+        /// without allocating. Thousand separators and spaces are ignored.
+        /// </summary>
+        /// <param name="value">The characters to parse.</param>
+        /// <param name="separators">The thousand and decimal separators to interpret the text with.</param>
+        /// <param name="parsedValue">The parsed value, or <c>default</c> if parsing failed.</param>
+        /// <returns><see langword="true"/> if the text was parsed successfully; otherwise <see langword="false"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static unsafe bool FastTryParseDecimal(ReadOnlySpan<char> value, DecimalSeparators separators, out decimal parsedValue)
         {
@@ -184,10 +206,25 @@ namespace System
             }
         }
 
+        /// <summary>
+        /// Attempts to parse a <see cref="decimal"/> from <paramref name="value"/> using the culture-invariant
+        /// <see cref="DecimalSeparators.ISO"/> convention (dot decimal, space thousands). This is the fastest overload.
+        /// </summary>
+        /// <param name="value">The characters to parse.</param>
+        /// <param name="parsedValue">The parsed value, or <c>default</c> if parsing failed.</param>
+        /// <returns><see langword="true"/> if the text was parsed successfully; otherwise <see langword="false"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool FastTryParseDecimal(ReadOnlySpan<char> value, out decimal parsedValue)
             => FastTryParseDecimal(value, DecimalSeparators.ISO, out parsedValue);
 
+        /// <summary>
+        /// Attempts to parse a <see cref="decimal"/> from <paramref name="value"/> using the separators from the
+        /// supplied <paramref name="culture"/>.
+        /// </summary>
+        /// <param name="value">The characters to parse.</param>
+        /// <param name="culture">The culture whose number format supplies the separators.</param>
+        /// <param name="parsedValue">The parsed value, or <c>default</c> if parsing failed.</param>
+        /// <returns><see langword="true"/> if the text was parsed successfully; otherwise <see langword="false"/>.</returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static bool FastTryParseDecimal(ReadOnlySpan<char> value, CultureInfo culture, out decimal parsedValue)
         {

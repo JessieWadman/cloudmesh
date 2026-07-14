@@ -4,6 +4,9 @@ using CloudMesh.Persistence.DynamoDB;
 
 namespace Microsoft.Extensions.DependencyInjection
 {
+    /// <summary>
+    /// Dependency-injection helpers for registering the DynamoDB repository stack.
+    /// </summary>
     public static class ServiceCollectionPersistenceExtensions
     {
         private static bool UseLocal()
@@ -20,6 +23,14 @@ namespace Microsoft.Extensions.DependencyInjection
             return false;
         }
 
+        /// <summary>
+        /// Registers <see cref="IAmazonDynamoDB"/> and <see cref="CloudMesh.Persistence.DynamoDB.IRepositoryFactory"/>
+        /// (as scoped services) so repositories can be resolved via DI. When the environment variable
+        /// <c>USE_LOCAL_DYNAMODB</c> is set to a truthy value, the client is pointed at a local DynamoDB endpoint
+        /// (<c>http://localhost:8000</c>) for development.
+        /// </summary>
+        /// <param name="services">The service collection to add registrations to.</param>
+        /// <returns>The same <paramref name="services"/> instance for chaining.</returns>
         public static IServiceCollection AddDynamoDBPersistence(this IServiceCollection services)
         {
             if (UseLocal())

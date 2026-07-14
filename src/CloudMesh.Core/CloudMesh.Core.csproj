@@ -6,12 +6,18 @@
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 		<Description>Useful optimized utility classes and helpers</Description>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
 		<RootNamespace>CloudMesh</RootNamespace>
 	</PropertyGroup>
 
 	<ItemGroup>
 	  <ProjectReference Include="..\CloudMesh.Guid64\CloudMesh.Guid64.csproj" />
 	  <ProjectReference Include="..\CloudMesh.Uuid\CloudMesh.Uuid.csproj" />
+	</ItemGroup>
+
+	<!-- Package-scoped readme shown on nuget.org. -->
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="\" />
 	</ItemGroup>
 
 </Project>

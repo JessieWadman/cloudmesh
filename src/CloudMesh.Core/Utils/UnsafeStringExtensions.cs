@@ -2,6 +2,14 @@ using System.Runtime.CompilerServices;
 
 namespace CloudMesh.Utils;
 
+/// <summary>
+/// Unsafe helpers for wiping character memory in place, so secrets (passwords, tokens) held in a
+/// <see cref="string"/> or char buffer can be scrubbed from memory rather than left for the GC.
+/// </summary>
+/// <remarks>
+/// Overwriting a <see cref="string"/> in place violates string immutability. Only use this on strings you own and
+/// know are not interned or shared; interned or shared instances must never be passed here.
+/// </remarks>
 public static class UnsafeStringOperations
 {
     /// <summary>
@@ -22,6 +30,9 @@ public static class UnsafeStringOperations
         stringContainingSecret = string.Empty;
     }
 
+    /// <summary>Overwrites <paramref name="count"/> characters starting at <paramref name="ptr"/> with null characters.</summary>
+    /// <param name="ptr">A pointer to the first character to clear.</param>
+    /// <param name="count">The number of characters to overwrite.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static unsafe void ClearMemory(char* ptr, int count)
     {

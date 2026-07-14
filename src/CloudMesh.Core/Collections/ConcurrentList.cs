@@ -2,23 +2,38 @@ using System.Collections;
 
 namespace CloudMesh.Collections;
 
+/// <summary>
+/// A thread-safe <see cref="IList{T}"/> backed by a <see cref="System.Threading.ReaderWriterLockSlim"/>: reads run
+/// concurrently while writes take an exclusive lock. Enumerating holds a read lock for the lifetime of the
+/// enumerator, so dispose enumerators promptly (a <c>foreach</c> does this automatically).
+/// </summary>
+/// <typeparam name="T">The element type.</typeparam>
+/// <remarks>
+/// Because the lock uses <see cref="System.Threading.LockRecursionPolicy.NoRecursion"/>, do not mutate the list
+/// from within an active enumeration, and dispose the list when done to release the lock.
+/// </remarks>
 public class ConcurrentList<T> : IList<T>, IDisposable
 {
     private readonly List<T> _list;
     private readonly ReaderWriterLockSlim _lock;
 
+    /// <summary>Creates an empty concurrent list.</summary>
     public ConcurrentList()
     {
         this._lock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
         this._list = new List<T>();
     }
 
+    /// <summary>Creates an empty concurrent list with the given initial capacity.</summary>
+    /// <param name="capacity">The initial capacity of the backing list.</param>
     public ConcurrentList(int capacity)
     {
         this._lock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
         this._list = new List<T>(capacity);
     }
 
+    /// <summary>Creates a concurrent list pre-populated with the given items.</summary>
+    /// <param name="items">The items to copy into the list.</param>
     public ConcurrentList(IEnumerable<T> items)
     {
         this._lock = new ReaderWriterLockSlim(LockRecursionPolicy.NoRecursion);
@@ -79,6 +94,8 @@ public class ConcurrentList<T> : IList<T>, IDisposable
         }
     }
 
+    /// <summary>Removes the elements at the given indexes in a single write lock, highest index first.</summary>
+    /// <param name="indexes">The indexes to remove. They are removed in descending order so earlier removals do not shift later ones.</param>
     public void RemoveAt(IEnumerable<int> indexes)
     {
         try
@@ -226,6 +243,11 @@ public class ConcurrentList<T> : IList<T>, IDisposable
     #endregion
 }
 
+/// <summary>
+/// Enumerator returned by <see cref="ConcurrentList{T}"/> that holds a read lock for its lifetime. Disposing it
+/// (which a <c>foreach</c> does automatically) releases the read lock.
+/// </summary>
+/// <typeparam name="T">The element type.</typeparam>
 public class ConcurrentEnumerator<T> : IEnumerator<T>
 {
     #region Fields
@@ -237,6 +259,9 @@ public class ConcurrentEnumerator<T> : IEnumerator<T>
 
     #region Constructor
 
+    /// <summary>Creates an enumerator over <paramref name="inner"/>, entering the supplied read lock immediately.</summary>
+    /// <param name="inner">The sequence to enumerate.</param>
+    /// <param name="lock">The reader-writer lock to hold (in read mode) while enumerating.</param>
     public ConcurrentEnumerator(IEnumerable<T> inner, ReaderWriterLockSlim @lock)
     {
         this._lock = @lock;

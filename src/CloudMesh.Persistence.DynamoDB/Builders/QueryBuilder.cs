@@ -6,17 +6,46 @@ using System.Runtime.CompilerServices;
 
 namespace CloudMesh.Persistence.DynamoDB.Builders
 {
+    /// <summary>
+    /// Fluent builder for a DynamoDB key-condition query over entity type <typeparamref name="T"/>. Set the hash
+    /// key (and optionally a sort-key condition), optionally target a secondary index, then materialize the
+    /// results with <see cref="ToArrayAsync"/> or <see cref="ToAsyncEnumerable"/> (which pages transparently).
+    /// </summary>
     public interface IQueryBuilder<T>
     {
+        /// <summary>Runs the query against the named local or global secondary index instead of the base table.</summary>
+        /// <param name="indexName">The index name.</param>
         IQueryBuilder<T> UseIndex(string indexName);
-        IQueryBuilder<T> Reverse();
-        IQueryBuilder<T> UseConsistentRead();
-        IQueryBuilder<T> WithHashKey(DynamoDBValue partitionKey);
-        IQueryBuilder<T> WithSortKey(QueryOperator queryOp, params DynamoDBValue[] value);
-        IAsyncEnumerable<T> ToAsyncEnumerable(CancellationToken cancellationToken);
-        Task<T[]> ToArrayAsync(CancellationToken cancellationToken);
-        IQueryBuilder<T> WithQueryFilter<R>(Expression<Func<T, R>> property, ScanOperator op, params R[] values);
 
+        /// <summary>Returns results in descending sort-key order.</summary>
+        IQueryBuilder<T> Reverse();
+
+        /// <summary>Requests a strongly consistent read. Not valid on global secondary indexes.</summary>
+        IQueryBuilder<T> UseConsistentRead();
+
+        /// <summary>Sets the partition (hash) key to query. Required.</summary>
+        /// <param name="partitionKey">The partition key value.</param>
+        IQueryBuilder<T> WithHashKey(DynamoDBValue partitionKey);
+
+        /// <summary>Adds a sort-key condition (e.g. equals, begins-with, between).</summary>
+        /// <param name="queryOp">The comparison operator applied to the sort key.</param>
+        /// <param name="value">One value for most operators, two for <see cref="QueryOperator.Between"/>.</param>
+        IQueryBuilder<T> WithSortKey(QueryOperator queryOp, params DynamoDBValue[] value);
+
+        /// <summary>Streams all matching items, paging through the result set as it is enumerated.</summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        IAsyncEnumerable<T> ToAsyncEnumerable(CancellationToken cancellationToken);
+
+        /// <summary>Materializes all matching items into an array.</summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        Task<T[]> ToArrayAsync(CancellationToken cancellationToken);
+
+        /// <summary>Adds a post-read filter on a non-key attribute (applied server-side after the key match).</summary>
+        /// <typeparam name="R">The filtered property's type.</typeparam>
+        /// <param name="property">Selects the property to filter on.</param>
+        /// <param name="op">The comparison operator.</param>
+        /// <param name="values">The value(s) to compare against.</param>
+        IQueryBuilder<T> WithQueryFilter<R>(Expression<Func<T, R>> property, ScanOperator op, params R[] values);
     }
 
     public class QueryBuilder<T> : IQueryBuilder<T>

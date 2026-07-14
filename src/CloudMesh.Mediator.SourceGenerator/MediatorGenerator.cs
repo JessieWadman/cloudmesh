@@ -31,7 +31,12 @@ public sealed class MediatorGenerator : IIncrementalGenerator
     private static readonly SymbolDisplayFormat FullyQualifiedFormat =
         SymbolDisplayFormat.FullyQualifiedFormat.WithMiscellaneousOptions(
             SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
-            SymbolDisplayMiscellaneousOptions.ExpandNullable);
+            SymbolDisplayMiscellaneousOptions.ExpandNullable |
+            // Preserve the nullable reference-type annotation on responses: a request declared
+            // IRequest<TDto?> must emit SendAsync<Req, TDto?> so the `where TRequest : IRequest<TResponse>`
+            // constraint is satisfied. Without this the `?` is dropped and closed-generic emission fails
+            // CS8631 for every query/command returning a nullable reference type.
+            SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {

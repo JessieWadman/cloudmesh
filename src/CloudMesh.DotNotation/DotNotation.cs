@@ -7,22 +7,107 @@ using System.Runtime.CompilerServices;
 
 namespace CloudMesh;
 
+/// <summary>
+/// Reads and writes deeply nested object values addressed by a string "dot notation" path,
+/// such as <c>"Address.City"</c> or <c>"Orders[0].Lines[\"sku-1\"].Quantity"</c>.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Access is performed through compiled expression-tree accessors (get/set delegates), not per-call
+/// reflection, so repeated access to the same property is fast. Compiled paths, per-type property
+/// accessors, and collection metadata are all cached in thread-safe static dictionaries and reused
+/// for the lifetime of the process.
+/// </para>
+/// <para>
+/// <b>Path syntax:</b>
+/// </para>
+/// <list type="bullet">
+///   <item><description>Properties are separated by <c>.</c> — e.g. <c>"Customer.Name"</c>.</description></item>
+///   <item><description>List / array elements use a numeric indexer — e.g. <c>"Orders[2]"</c>.</description></item>
+///   <item><description>Dictionary entries use a bracket key, optionally quoted — e.g. <c>"Tags[\"env\"]"</c> or <c>"Scores[42]"</c>.</description></item>
+///   <item><description>Indexers can be chained onto properties — e.g. <c>"Orders[0].Lines[1].Sku"</c>.</description></item>
+/// </list>
+/// <para>
+/// Dictionary keys are converted from their string form to the dictionary's key type. Supported key
+/// types are <see cref="string"/>, <see cref="int"/>, <see cref="long"/>, <see cref="Guid"/>, and enums.
+/// Reading a missing property returns <see langword="null"/>; writing auto-creates intermediate objects,
+/// dictionary entries, and list slots as needed (see <see cref="CompiledPath.SetValue"/>).
+/// </para>
+/// <example>
+/// <code>
+/// var order = new Order();
+/// DotNotation.SetValue(order, "Customer.Name", "Ada");
+/// DotNotation.SetValue(order, "Lines[0].Sku", "ABC");     // grows the list and creates Lines[0]
+/// var name = (string?)DotNotation.GetValue(order, "Customer.Name");   // "Ada"
+///
+/// // Compile once, reuse many times:
+/// var path = DotNotation.Compile("Customer.Name");
+/// path.SetValue(order, "Grace");
+/// </code>
+/// </example>
+/// </remarks>
 public static class DotNotation
 {
     private static readonly ConcurrentDictionary<string, CompiledPath> PathCache = new(StringComparer.Ordinal);
     private static readonly ConcurrentDictionary<MemberKey, Accessor> AccessorCache = new();
     private static readonly ConcurrentDictionary<Type, CollectionInfo> CollectionCache = new();
 
+    /// <summary>
+    /// Reads the value found at <paramref name="dotNotationPath"/> on <paramref name="instance"/>.
+    /// </summary>
+    /// <param name="instance">The root object to read from.</param>
+    /// <param name="dotNotationPath">The dot-notation path to the value (see <see cref="DotNotation"/> for syntax).</param>
+    /// <returns>
+    /// The value at the path, or <see langword="null"/> if any object along the path is
+    /// <see langword="null"/> or an indexer references a missing element.
+    /// </returns>
+    /// <remarks>The path is compiled and cached on first use; subsequent calls reuse the compiled accessor.</remarks>
     public static object? GetValue(object instance, string dotNotationPath)
         => Compile(dotNotationPath).GetValue(instance);
 
+    /// <summary>
+    /// Writes <paramref name="value"/> to the location addressed by <paramref name="dotNotationPath"/> on
+    /// <paramref name="instance"/>, creating any missing intermediate objects, dictionary entries, or list
+    /// slots along the way.
+    /// </summary>
+    /// <param name="instance">The root object to write to.</param>
+    /// <param name="dotNotationPath">The dot-notation path to the target (see <see cref="DotNotation"/> for syntax).</param>
+    /// <param name="value">The value to assign; must be assignable to the target member's type.</param>
+    /// <remarks>The path is compiled and cached on first use; subsequent calls reuse the compiled accessor.</remarks>
     public static void SetValue(object instance, string dotNotationPath, object? value)
         => Compile(dotNotationPath).SetValue(instance, value);
 
-    // Additive API. Existing callers remain untouched.
+    /// <summary>
+    /// Parses and compiles a dot-notation path into a reusable <see cref="CompiledPath"/>.
+    /// </summary>
+    /// <param name="dotNotationPath">The dot-notation path to compile (see <see cref="DotNotation"/> for syntax).</param>
+    /// <returns>A cached, reusable <see cref="CompiledPath"/> for the given path string.</returns>
+    /// <remarks>
+    /// Results are cached by path string, so calling this repeatedly with the same path returns the same
+    /// instance. Prefer this over <see cref="GetValue"/>/<see cref="SetValue"/> when you access the same
+    /// path against many instances in a tight loop.
+    /// </remarks>
     public static CompiledPath Compile(string dotNotationPath)
         => PathCache.GetOrAdd(dotNotationPath, static path => new CompiledPath(Parse(path)));
 
+    /// <summary>
+    /// Converts a strongly typed member-access lambda into its equivalent dot-notation path string.
+    /// </summary>
+    /// <typeparam name="TSource">The root type the expression is rooted on.</typeparam>
+    /// <typeparam name="TProp">The type of the member selected by the expression.</typeparam>
+    /// <param name="pathExpression">
+    /// A member-access expression such as <c>e =&gt; e.Address.City</c> or <c>e =&gt; e.Tags["env"]</c>.
+    /// Captured variables used as indexers are evaluated and folded into the resulting path.
+    /// </param>
+    /// <returns>
+    /// A tuple of the resulting dot-notation <c>PropertyPath</c> and the <c>MemberType</c> of the selected member.
+    /// </returns>
+    /// <example>
+    /// <code>
+    /// var (path, type) = DotNotation.ToDotNotation&lt;Order, string&gt;(o =&gt; o.Customer.Name);
+    /// // path == "Customer.Name", type == typeof(string)
+    /// </code>
+    /// </example>
     public static (string PropertyPath, Type MemberType) ToDotNotation<TSource, TProp>(
         Expression<Func<TSource, TProp>> pathExpression)
     {
@@ -100,6 +185,14 @@ public static class DotNotation
         }
     }
 
+    /// <summary>
+    /// A parsed, reusable dot-notation path that can read and write the addressed value on any compatible
+    /// instance. Obtain one via <see cref="DotNotation.Compile"/>.
+    /// </summary>
+    /// <remarks>
+    /// Instances are immutable and thread-safe; the underlying property accessors and collection metadata
+    /// are compiled once and shared through <see cref="DotNotation"/>'s caches.
+    /// </remarks>
     public sealed class CompiledPath
     {
         private readonly Segment[] segments;
@@ -107,6 +200,14 @@ public static class DotNotation
         internal CompiledPath(Segment[] segments)
             => this.segments = segments;
 
+        /// <summary>
+        /// Reads the value addressed by this path on <paramref name="instance"/>.
+        /// </summary>
+        /// <param name="instance">The root object to read from.</param>
+        /// <returns>
+        /// The value at the path, or <see langword="null"/> if any object along the path is
+        /// <see langword="null"/> or an indexer references a missing element.
+        /// </returns>
         public object? GetValue(object instance)
         {
             object? current = instance;
@@ -129,6 +230,18 @@ public static class DotNotation
             return current;
         }
 
+        /// <summary>
+        /// Writes <paramref name="value"/> to the location addressed by this path on
+        /// <paramref name="instance"/>, creating any missing intermediate objects, dictionary entries, or
+        /// list slots along the way.
+        /// </summary>
+        /// <param name="instance">The root object to write to.</param>
+        /// <param name="value">The value to assign; must be assignable to the target member's type.</param>
+        /// <remarks>
+        /// Missing intermediate reference-typed properties are instantiated with their parameterless
+        /// constructor. When a list indexer points past the end of the list, the list is grown (padding
+        /// with default elements) so the slot exists. An empty path is a no-op.
+        /// </remarks>
         public void SetValue(object instance, object? value)
         {
             if (segments.Length == 0)

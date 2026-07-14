@@ -4,8 +4,27 @@ using CloudMesh.Memory;
 namespace CloudMesh.IO;
 
 /// <summary>
-/// Optimized, statically allocated, buffered stream reader for text files than can read one line of text at a time 
+/// A high-throughput, low-allocation line reader for large text streams. It reads the stream in big fixed-size
+/// chunks and exposes each line as a <see cref="ReadOnlyMemory{T}"/> slice over its reusable buffer, avoiding a
+/// string allocation per line. Decode a line to characters on demand via <see cref="GetCurrentLine"/>.
 /// </summary>
+/// <remarks>
+/// The buffers are allocated once and reused, so a single reader can be re-pointed at a new stream with
+/// <see cref="Reset"/> without re-allocating. Lines are split on a single byte <c>delimiter</c> (default
+/// <c>'\n'</c>). Because <see cref="CurrentLineBytes"/> points into the internal buffer, copy it out (or decode it)
+/// before the next <see cref="ReadAsync"/> call if you need to retain it.
+/// </remarks>
+/// <example>
+/// <code>
+/// await using var stream = File.OpenRead("large.csv");
+/// var reader = new BufferedStreamLineReader(stream);
+/// while (await reader.ReadAsync(cancellationToken))
+/// {
+///     reader.GetCurrentLine(out var chars);
+///     Process(chars.Span);
+/// }
+/// </code>
+/// </example>
 public class BufferedStreamLineReader
 {
     private readonly byte delimiter;
@@ -38,7 +57,14 @@ public class BufferedStreamLineReader
 
     private bool endOfStream;
 
-    public BufferedStreamLineReader(Encoding? encoding = null, byte delimiter = (byte)'\n', 
+    /// <summary>
+    /// Creates a reader with pre-allocated buffers but no stream attached. Call <see cref="Reset"/> to point it at
+    /// a stream before reading.
+    /// </summary>
+    /// <param name="encoding">The text encoding used by <see cref="GetCurrentLine"/>. Defaults to UTF-8.</param>
+    /// <param name="delimiter">The byte that separates lines. Defaults to <c>'\n'</c>.</param>
+    /// <param name="readBufferSize">The size, in bytes, of the chunk read from the stream at a time.</param>
+    public BufferedStreamLineReader(Encoding? encoding = null, byte delimiter = (byte)'\n',
         int readBufferSize = DefaultReadBufferSize)
     {
         this.delimiter = delimiter;
@@ -47,16 +73,32 @@ public class BufferedStreamLineReader
         remainderFromPreviousReadBuffer = new(GC.AllocateUninitializedArray<byte>(InitialRemainderBufferSize));
     }
     
-    public BufferedStreamLineReader(Stream stream, Encoding? encoding = null, byte delimiter = (byte)'\n', 
+    /// <summary>Creates a reader and immediately attaches it to <paramref name="stream"/>.</summary>
+    /// <param name="stream">The stream to read lines from.</param>
+    /// <param name="encoding">The text encoding used by <see cref="GetCurrentLine"/>. Defaults to UTF-8.</param>
+    /// <param name="delimiter">The byte that separates lines. Defaults to <c>'\n'</c>.</param>
+    /// <param name="readBufferSize">The size, in bytes, of the chunk read from the stream at a time.</param>
+    public BufferedStreamLineReader(Stream stream, Encoding? encoding = null, byte delimiter = (byte)'\n',
         int readBufferSize = DefaultReadBufferSize)
         : this(encoding, delimiter, readBufferSize)
     {
         this.Reset(stream);
     }
-    
+
+    /// <summary>The 1-based number of the line currently exposed by <see cref="CurrentLineBytes"/>.</summary>
     public int CurrentLineNumber { get; private set; }
+
+    /// <summary>
+    /// The raw bytes of the current line (without the delimiter), as a slice over the internal buffer. Valid only
+    /// until the next <see cref="ReadAsync"/> call; copy or decode it before advancing.
+    /// </summary>
     public ReadOnlyMemory<byte> CurrentLineBytes => currentLineBytes;
 
+    /// <summary>
+    /// Re-points the reader at a new stream and resets line tracking, reusing the existing buffers.
+    /// </summary>
+    /// <param name="newStream">The new stream to read from.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="newStream"/> is <see langword="null"/>.</exception>
     public void Reset(Stream newStream)
     {
         this.stream = newStream ?? throw new ArgumentNullException(nameof(newStream));
@@ -66,6 +108,13 @@ public class BufferedStreamLineReader
         endOfStream = false;
     }
     
+    /// <summary>
+    /// Advances to the next line. On success, <see cref="CurrentLineBytes"/> and <see cref="CurrentLineNumber"/>
+    /// reflect the new line.
+    /// </summary>
+    /// <param name="cancellationToken">A token to cancel the underlying stream read.</param>
+    /// <returns><see langword="true"/> if a line was read; <see langword="false"/> at end of stream.</returns>
+    /// <exception cref="ObjectDisposedException">No stream is attached.</exception>
     public ValueTask<bool> ReadAsync(CancellationToken cancellationToken)
     {
         if (stream == null)
@@ -197,6 +246,10 @@ public class BufferedStreamLineReader
         return true;
     }
     
+    /// <summary>
+    /// Decodes the current line's bytes into characters using the reader's encoding, into a reusable char buffer.
+    /// </summary>
+    /// <param name="chars">Receives the decoded characters as a slice over the internal char buffer, valid until the next call.</param>
     public void GetCurrentLine(out ReadOnlyMemory<char> chars)
     {
         // Repeatedly grow buffer by 8KB to try and accommodate the decoded text from "bytes", until

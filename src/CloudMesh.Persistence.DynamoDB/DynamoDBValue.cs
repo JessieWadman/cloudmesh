@@ -3,14 +3,25 @@ using System.Globalization;
 
 namespace CloudMesh.Persistence.DynamoDB
 {
+    /// <summary>The DynamoDB scalar attribute category a <see cref="DynamoDBValue"/> maps to.</summary>
     public enum DynamoDBValueType
     {
+        /// <summary>A DynamoDB string (<c>S</c>) attribute.</summary>
         String,
+        /// <summary>A DynamoDB number (<c>N</c>) attribute.</summary>
         Number,
+        /// <summary>A DynamoDB boolean (<c>BOOL</c>) attribute.</summary>
         Boolean,
+        /// <summary>A DynamoDB null (<c>NULL</c>) attribute.</summary>
         Null
     }
 
+    /// <summary>
+    /// A weakly-typed key/attribute value used throughout the repository API for keys, index values and
+    /// comparisons. Implicit conversions exist from the common .NET scalar types (string, the integer/floating
+    /// types, <see cref="bool"/>, <see cref="Guid"/>, <see cref="DateOnly"/>, <see cref="DateTime"/>,
+    /// <see cref="DateTimeOffset"/>), so keys can be passed as plain literals.
+    /// </summary>
     public readonly struct DynamoDBValue
     {
         private readonly object? Original { get; init; }

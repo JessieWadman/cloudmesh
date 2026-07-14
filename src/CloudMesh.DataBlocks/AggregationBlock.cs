@@ -3,6 +3,20 @@ using CloudMesh.Variant;
 
 namespace CloudMesh.DataBlocks
 {
+    /// <summary>
+    /// A fan-in block that accumulates incoming <typeparamref name="T"/> messages into your own aggregate state
+    /// and flushes it on a fixed time window. Unlike <see cref="BufferBlock{T}"/> (which batches the messages
+    /// themselves), an aggregation block folds each message into custom state via <see cref="ReceiveOne(T)"/> —
+    /// e.g. summing counters, merging metrics, or coalescing updates — then emits the aggregate in
+    /// <see cref="FlushAsync()"/>.
+    /// </summary>
+    /// <typeparam name="T">The incoming message type to aggregate.</typeparam>
+    /// <remarks>
+    /// The flush timer starts on the first message of a batch and fires once <c>flushFrequency</c> later,
+    /// triggering <see cref="FlushAsync()"/>; the block also flushes on shutdown so nothing is lost. Because it
+    /// derives from <see cref="DataBlock"/>, all message handling (including your aggregation and flush) runs
+    /// single-threaded and in order, so the aggregate needs no locking.
+    /// </remarks>
     public abstract class AggregationDataBlock<T> : DataBlock
     {
         private bool firstMessageInBatch = true;
@@ -14,6 +28,9 @@ namespace CloudMesh.DataBlocks
             public static readonly Flush Instance = new();
         }
 
+        /// <summary>Creates the aggregation block.</summary>
+        /// <param name="flushFrequency">Time window after the first message of a batch before the aggregate is flushed.</param>
+        /// <param name="bufferSize">Mailbox capacity (backpressure bound).</param>
         protected AggregationDataBlock(TimeSpan flushFrequency, int bufferSize = 1)
             : base(bufferSize)
         {
@@ -41,6 +58,13 @@ namespace CloudMesh.DataBlocks
             }
         }
 
+        /// <summary>
+        /// Folds a single incoming message into your aggregate state. Return <see langword="true"/> if the
+        /// message contributed to the batch (and should therefore arm the flush timer), or <see langword="false"/>
+        /// to ignore it.
+        /// </summary>
+        /// <param name="message">The incoming message.</param>
+        /// <returns><see langword="true"/> if the message was aggregated into the current batch.</returns>
         protected abstract bool ReceiveOne(T message);
 
         private ValueTask InternalReceiveOne(T message)
@@ -104,6 +128,9 @@ namespace CloudMesh.DataBlocks
             return FlushAsync();
         }
 
+        /// <summary>
+        /// Emits and resets the accumulated aggregate. Called when the flush window elapses and on shutdown.
+        /// </summary>
         protected abstract ValueTask FlushAsync();
     }
 }

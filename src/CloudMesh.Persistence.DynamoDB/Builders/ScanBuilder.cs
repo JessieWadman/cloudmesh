@@ -56,14 +56,43 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         public override string ToString() => ToString(":arg1");
     }
 
+    /// <summary>
+    /// Fluent builder for a DynamoDB table/index scan over entity type <typeparamref name="T"/>. Scans read the
+    /// whole table (filters are applied server-side but after the read), so prefer <see cref="IQueryBuilder{T}"/>
+    /// whenever a key condition is available.
+    /// </summary>
     public interface IScanBuilder<T>
     {
+        /// <summary>Scans the named secondary index instead of the base table.</summary>
+        /// <param name="indexName">The index name.</param>
         IScanBuilder<T> UseIndex(string indexName);
+
+        /// <summary>Adds a filter condition on a scalar property.</summary>
+        /// <typeparam name="R">The filtered property's type.</typeparam>
+        /// <param name="property">Selects the property to filter on.</param>
+        /// <param name="scanOp">The comparison operator.</param>
+        /// <param name="values">The value(s) to compare against.</param>
         IScanBuilder<T> Where<R>(Expression<Func<T, R>> property, ScanOperator scanOp, params R[] values);
+
+        /// <summary>Adds a set membership filter (<see cref="ScanOperator.Contains"/> / <see cref="ScanOperator.NotContains"/>) on a collection property.</summary>
+        /// <typeparam name="R">The element type of the collection property.</typeparam>
+        /// <param name="property">Selects the collection property to filter on.</param>
+        /// <param name="scanOp">Either <see cref="ScanOperator.Contains"/> or <see cref="ScanOperator.NotContains"/>.</param>
+        /// <param name="value">The element to test for.</param>
         IScanBuilder<T> Where<R>(Expression<Func<T, IEnumerable<R>>> property, ScanOperator scanOp, R value);
+
+        /// <summary>Combines the added filters with <c>OR</c> instead of the default <c>AND</c>.</summary>
         IScanBuilder<T> UseOrInsteadOfAnd();
+
+        /// <summary>Requests a strongly consistent read.</summary>
         IScanBuilder<T> UseConsistentRead();
+
+        /// <summary>Streams all matching items, paging through the result set as it is enumerated.</summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
         IAsyncEnumerable<T> ToAsyncEnumerable(CancellationToken cancellationToken);
+
+        /// <summary>Materializes all matching items into an array.</summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
         Task<T[]> ToArrayAsync(CancellationToken cancellationToken);
     }
     public class ScanBuilder<T> : IScanBuilder<T>

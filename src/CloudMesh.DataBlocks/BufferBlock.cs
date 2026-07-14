@@ -3,6 +3,20 @@ using CloudMesh.Variant;
 
 namespace CloudMesh.DataBlocks
 {
+    /// <summary>
+    /// A fan-in block that batches incoming <typeparamref name="T"/> messages and flushes them as an array, so
+    /// downstream work happens in efficient chunks rather than per message. A batch is flushed when it reaches
+    /// <c>maxCapacity</c>, or when <c>maxWaitTimeToFlush</c> elapses after the batch's first message — whichever
+    /// comes first — and always on shutdown.
+    /// </summary>
+    /// <typeparam name="T">The message type to buffer.</typeparam>
+    /// <remarks>
+    /// Accepts single <typeparamref name="T"/> messages and <typeparamref name="T"/><c>[]</c> arrays (which are
+    /// appended to the current batch). A time-based flush is guaranteed even if no further messages arrive, via a
+    /// one-shot timer armed on the first message. Handling is single-threaded and ordered, so
+    /// <see cref="FlushAsync(T[])"/> never overlaps itself. See <see cref="BufferRouter{T}"/> for a ready-made
+    /// buffer that forwards each batch to another block.
+    /// </remarks>
     public abstract class BufferBlock<T> : DataBlock
     {
         private readonly List<T> messages;
@@ -16,6 +30,9 @@ namespace CloudMesh.DataBlocks
             public static readonly Flush Instance = new();
         }
 
+        /// <summary>Creates the buffer block.</summary>
+        /// <param name="maxCapacity">Maximum batch size; reaching it triggers an immediate flush. Also the mailbox capacity.</param>
+        /// <param name="maxWaitTimeToFlush">Maximum time to hold a partial batch after its first message before flushing.</param>
         public BufferBlock(int maxCapacity, TimeSpan maxWaitTimeToFlush)
             : base(maxCapacity)
         {
@@ -166,6 +183,10 @@ namespace CloudMesh.DataBlocks
                 messages.RemoveRange(0, count);
         }
 
+        /// <summary>
+        /// Processes one flushed batch. Called when the batch fills, the wait window elapses, or the block stops.
+        /// </summary>
+        /// <param name="messages">The batched messages, in arrival order (never empty).</param>
         protected abstract ValueTask FlushAsync(T[] messages);
     }
 }

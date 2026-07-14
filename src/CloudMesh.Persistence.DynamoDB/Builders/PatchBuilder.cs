@@ -5,9 +5,26 @@ using Amazon.DynamoDBv2.Model;
 
 namespace CloudMesh.Persistence.DynamoDB.Builders
 {
+    /// <summary>
+    /// Fluent builder for a partial, in-place update of a single item. Inherits the mutation/condition verbs from
+    /// <see cref="IUpdateExpressionBuilder{TEntity,TBuilder}"/> (<c>Set</c>, <c>Remove</c>, <c>Increment</c>,
+    /// <c>Add</c>, <c>If</c>, ...) and executes them as one DynamoDB <c>UpdateItem</c>. Conditional (<c>If</c>)
+    /// failures do not throw — they surface as <see langword="false"/> / <see langword="null"/>.
+    /// </summary>
     public interface IPatchBuilder<T> : IUpdateExpressionBuilder<T, IPatchBuilder<T>>
     {
+        /// <summary>
+        /// Applies the update. Returns <see langword="true"/> on success, or <see langword="false"/> if a
+        /// conditional <c>If</c> check failed (the item was left unchanged).
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
         ValueTask<bool> ExecuteAsync(CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Applies the update and returns the new item state, or <see langword="null"/> if a conditional <c>If</c>
+        /// check failed (the item was left unchanged).
+        /// </summary>
+        /// <param name="cancellationToken">Cancellation token.</param>
         ValueTask<T?> ExecuteAndGetAsync(CancellationToken cancellationToken);
     }
 

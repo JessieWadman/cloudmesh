@@ -3,12 +3,32 @@ using System.Diagnostics.CodeAnalysis;
 namespace CloudMesh.Utils;
 
 /// <summary>
-///     Class for asynchronous reader-writer lock.
+///     An awaitable reader-writer lock. Multiple readers may hold the lock at once, but a writer holds it
+///     exclusively. Acquire with <see cref="ReaderLockAsync"/> or <see cref="WriterLockAsync"/> and release by
+///     disposing the returned <see cref="Releaser"/> (use a <c>using</c> block).
 /// </summary>
 /// <remarks>
-///     This class does not support upgradable lock.
+///     Prefer this over a plain <see cref="AsyncLock"/> when reads greatly outnumber writes and readers can safely
+///     run concurrently. This class does not support upgradeable locks and is not re-entrant.
 ///     Reference: https://blogs.msdn.microsoft.com/pfxteam/2012/02/12/building-async-coordination-primitives-part-7-asyncreaderwriterlock/
 /// </remarks>
+/// <example>
+/// <code>
+/// private readonly AsyncReaderWriterLock _rw = new();
+///
+/// public async Task&lt;int&gt; ReadAsync()
+/// {
+///     using (await _rw.ReaderLockAsync())
+///         return _value;            // many readers may run at once
+/// }
+///
+/// public async Task WriteAsync(int value)
+/// {
+///     using (await _rw.WriterLockAsync())
+///         _value = value;           // exclusive
+/// }
+/// </code>
+/// </example>
 public class AsyncReaderWriterLock
 {
     private readonly Task<Releaser> _readerReleaser;
@@ -31,8 +51,9 @@ public class AsyncReaderWriterLock
     }
 
     /// <summary>
-    ///     Obtains a reader lock.
+    ///     Asynchronously acquires a shared reader lock. Waits while a writer holds the lock or writers are queued.
     /// </summary>
+    /// <returns>A <see cref="Releaser"/> whose disposal releases the reader lock.</returns>
     public Task<Releaser> ReaderLockAsync()
     {
         lock (_waitingWriters)
@@ -51,8 +72,9 @@ public class AsyncReaderWriterLock
     }
 
     /// <summary>
-    ///     Obtains a writer lock.
+    ///     Asynchronously acquires the exclusive writer lock. Waits until all readers and any other writer have released.
     /// </summary>
+    /// <returns>A <see cref="Releaser"/> whose disposal releases the writer lock.</returns>
     public Task<Releaser> WriterLockAsync()
     {
         lock (_waitingWriters)

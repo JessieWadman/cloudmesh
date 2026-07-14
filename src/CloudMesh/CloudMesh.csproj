@@ -5,11 +5,17 @@
 	  <Nullable>enable</Nullable>
 	  <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 	  <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-	  <Description>Useful optimized utility classes and helpers</Description>
+	  <Description>CloudMesh umbrella package — prefer the focused component packages (see the readme).</Description>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\CloudMesh.Core\CloudMesh.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Package-scoped readme shown on nuget.org. -->
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
 </Project>

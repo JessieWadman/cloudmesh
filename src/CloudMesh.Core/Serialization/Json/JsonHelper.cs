@@ -6,8 +6,15 @@ using System.Text.Json.Serialization;
 
 namespace CloudMesh.Serialization.Json
 {
+    /// <summary>
+    /// Ready-made <see cref="JsonSerializerOptions"/> and a JSON merge utility built on <c>System.Text.Json</c>.
+    /// </summary>
     public static class JsonHelper
     {
+        /// <summary>
+        /// Lenient options for general use: ignores nulls when writing, case-insensitive property matching, skips
+        /// comments, allows trailing commas, keeps original property names, and caps depth at 16.
+        /// </summary>
         public static readonly JsonSerializerOptions DefaultJsonOptions = new()
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -19,6 +26,7 @@ namespace CloudMesh.Serialization.Json
             WriteIndented = false,
         };
 
+        /// <summary>Same as <see cref="DefaultJsonOptions"/> but emits and matches <c>camelCase</c> property names.</summary>
         public static readonly JsonSerializerOptions CamelCase = new()
         {
             DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
@@ -30,6 +38,17 @@ namespace CloudMesh.Serialization.Json
             WriteIndented = false
         };
 
+        /// <summary>
+        /// Deep-merges two JSON documents of the same kind (object or array) and returns the merged JSON.
+        /// </summary>
+        /// <param name="originalJson">The base JSON document. Must be an object or array.</param>
+        /// <param name="newContent">The JSON to merge in. Must be the same kind as <paramref name="originalJson"/>.</param>
+        /// <returns>
+        /// The merged JSON. Objects are merged recursively (a non-null value in <paramref name="newContent"/> wins on
+        /// conflict; nulls do not overwrite); arrays are concatenated. If the two roots are different kinds,
+        /// <paramref name="originalJson"/> is returned unchanged.
+        /// </returns>
+        /// <exception cref="InvalidOperationException"><paramref name="originalJson"/> is not an object or array.</exception>
         public static string Merge(string originalJson, string newContent)
         {
             var outputBuffer = new ArrayBufferWriter<byte>();

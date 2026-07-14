@@ -1,17 +1,24 @@
 ﻿namespace CloudMesh.Utils
 {
     /// <summary>
-    /// <para>
-    ///     MurmurHash3 x64 128-bit variant. Credits to https://github.com/judwhite
-    /// </para>
-    /// <para>
-    ///     Project home: https://github.com/judwhite/Grassfed.MurmurHash3
-    /// </para>
-    /// <para>
-    ///     See https://github.com/aappleby/smhasher/wiki/MurmurHash3 for more information. Port of 
-    ///     https://github.com/aappleby/smhasher/blob/61a0530f28277f2e850bfc39600ce61d02b518de/src/MurmurHash3.cpp#L255
-    /// </para>
+    /// The 128-bit x64 variant of MurmurHash3, producing a 128-bit hash (as two <see cref="ulong"/> halves,
+    /// a 16-byte array, or a <see cref="Guid"/>) from a byte buffer.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    ///     Adapted from <see href="https://github.com/judwhite/Grassfed.MurmurHash3">Grassfed.MurmurHash3</see>
+    ///     by judwhite, itself a port of Austin Appleby's public-domain SMHasher reference implementation
+    ///     (<see href="https://github.com/aappleby/smhasher/wiki/MurmurHash3">MurmurHash3</see>).
+    /// </para>
+    /// <para>
+    ///     This is the x64 128-bit variant and is not interchangeable with the x86 variant or with
+    ///     <see cref="MurmurHash2"/>. Not cryptographically secure.
+    /// </para>
+    /// <para>
+    ///     On .NET 9 and later this type is marked obsolete: prefer the BCL-native
+    ///     <c>System.IO.Hashing.XxHash128</c> unless you need compatibility with previously computed values.
+    /// </para>
+    /// </remarks>
 #if (NET9_0_OR_GREATER)
     [Obsolete("XxHash is BCL native, consider using that instead, unless you need compatibility")]
 #endif
@@ -31,6 +38,9 @@
             return ComputeHash(buffer, 0, buffer.Length);
         }
 
+        /// <summary>Computes the 128-bit hash and returns it as a 16-byte little-endian array.</summary>
+        /// <param name="buffer">The input to compute the hash code for.</param>
+        /// <returns>The 128-bit hash as a 16-byte array.</returns>
         public static unsafe byte[] ComputeHashToBytes(ReadOnlyMemory<byte> buffer)
         {
             var (h1, h2) = ComputeHash(buffer);
@@ -45,6 +55,9 @@
             return ret;
         }
 
+        /// <summary>Computes the 128-bit hash and returns it as a <see cref="Guid"/>.</summary>
+        /// <param name="buffer">The input to compute the hash code for.</param>
+        /// <returns>The 128-bit hash packed into a <see cref="Guid"/> — handy as a compact, deterministic key.</returns>
         public static Guid ComputeHashToGuid(ReadOnlyMemory<byte> buffer)
         {
             var hash = ComputeHashToBytes(buffer);

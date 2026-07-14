@@ -5,29 +5,40 @@ using System.Runtime.CompilerServices;
 namespace CloudMesh.DataBlocks
 {
     /// <summary>
-    /// This differs from round-robin in that round-robin will always advance to the next one 
-    /// whenever a message is written.
-    /// This will only advance to the next when a write fails.
-    /// I.e. it will continuously write to the same one, until backpressure forms, and then move to the next
-    /// This is useful for writers where you want few, big writes, rather than even spread. 
-    /// This lowers cost for things like Timestream and CloudWatch metrics, where you want as few
-    /// batch-writes as possible, with as big a batch as possible.
+    /// A fan-out block that keeps sending to the <b>same</b> worker until it fills up (backpressure), only then
+    /// spilling over to the next. This is the opposite bias to <see cref="RoundRobinDataBlock"/>'s even spread:
+    /// it favours few, large batches on a single worker rather than a uniform distribution.
     /// </summary>
+    /// <remarks>
+    /// Useful for downstream writers where big batches are much cheaper than many small ones — e.g. Amazon
+    /// Timestream or CloudWatch metric writes — so you want as few batch-writes as possible, each as large as
+    /// possible. Add workers with <see cref="AddTarget{T}"/> / <see cref="AddTargets{T}"/>.
+    /// </remarks>
     public class SpillOverDataBlock : DataBlock
     {
         private readonly bool advanceOnSuccess;
 
+        /// <summary>Creates the spill-over router.</summary>
+        /// <param name="advanceOnSuccess">When <see langword="false"/> (default), keep hitting the same worker
+        /// until it applies backpressure; when <see langword="true"/>, advance after every successful send.</param>
         public SpillOverDataBlock(bool advanceOnSuccess = false)
             : base(1)
         {
             this.advanceOnSuccess = advanceOnSuccess;
         }
 
+        /// <summary>Adds a worker to the pool from a <c>() =&gt; new T(...)</c> expression.</summary>
+        /// <typeparam name="T">The worker block type.</typeparam>
+        /// <param name="newExpression">A <c>() =&gt; new T(...)</c> expression describing the worker.</param>
         public void AddTarget<T>(Expression<Func<T>> newExpression) where T : IDataBlock
         {
             ChildOf(newExpression, $"{Children.Count()}");
         }
 
+        /// <summary>Adds <paramref name="count"/> identical workers to the pool.</summary>
+        /// <typeparam name="T">The worker block type.</typeparam>
+        /// <param name="newExpression">A <c>() =&gt; new T(...)</c> expression describing each worker.</param>
+        /// <param name="count">The number of workers to create.</param>
         public void AddTargets<T>(Expression<Func<T>> newExpression, int count) where T : IDataBlock
         {
             for (int i = 0; i < count; i++)

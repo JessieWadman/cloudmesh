@@ -21,8 +21,23 @@ namespace CloudMesh.Persistence.DynamoDB.Mock
         internal ConcurrentDictionary<string, ConcurrentList<string>> Tables = new();
     }
 
+    /// <summary>
+    /// A fully in-memory <see cref="IRepositoryFactory"/> for unit tests. It mirrors the behavior of the real
+    /// DynamoDB-backed factory (keys, conditional patches, transactions, queries and scans) without any AWS
+    /// dependency, so tests can exercise repository code with no network or emulator. Swap it in wherever an
+    /// <see cref="IRepositoryFactory"/> is injected.
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// var factory = new InMemoryRepositoryFactory();
+    /// var repo = factory.For&lt;Order&gt;("orders");
+    /// await repo.SaveAsync(new Order { Id = "1", Total = 10 }, default);
+    /// var loaded = await repo.GetById("1", default);
+    /// </code>
+    /// </example>
     public class InMemoryRepositoryFactory : InMemoryDb, IRepositoryFactory
     {
+        /// <inheritdoc />
         public IRepository<T> For<T>(string tableName)
         {
             var rows = Tables.GetOrAdd(tableName, _ => new ConcurrentList<string>());

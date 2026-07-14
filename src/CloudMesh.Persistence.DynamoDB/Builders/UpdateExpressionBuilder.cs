@@ -20,19 +20,48 @@ namespace CloudMesh.Persistence.DynamoDB.Builders
         StartsWith
     }
 
+    /// <summary>Non-generic marker for update-expression builders.</summary>
     public interface IUpdateExpressionBuilder { }
 
+    /// <summary>
+    /// Shared, fluent surface for describing a DynamoDB partial update: which attributes to change and, optionally,
+    /// the conditions under which the change is allowed. Implemented by both the single-item patch
+    /// (<see cref="IPatchBuilder{T}"/>) and the transactional patch (<see cref="ITransactWritePatchBuilder{T}"/>).
+    /// </summary>
+    /// <typeparam name="TEntity">The mapped entity type being updated.</typeparam>
+    /// <typeparam name="TBuilder">The concrete builder returned for chaining.</typeparam>
     public interface IUpdateExpressionBuilder<TEntity, out TBuilder> : IUpdateExpressionBuilder
         where TBuilder : IUpdateExpressionBuilder
     {
+        /// <summary>Guards the update with a condition comparing a property against a value (optimistic concurrency).</summary>
+        /// <typeparam name="R">The property's type.</typeparam>
+        /// <param name="property">Selects the property to test.</param>
+        /// <param name="condition">The comparison to apply.</param>
+        /// <param name="value">The value to compare against.</param>
         TBuilder If<R>(Expression<Func<TEntity, R>> property, PatchCondition condition, R value);
+
+        /// <summary>Guards the update on the collection property containing the given element.</summary>
         TBuilder IfContains<R>(Expression<Func<TEntity, IEnumerable<R>>> property, R value);
+
+        /// <summary>Guards the update on the size (element/character count) of a property.</summary>
         TBuilder IfSize<R>(Expression<Func<TEntity, R>> property, PatchCondition condition, int value);
+
+        /// <summary>Removes (unsets) an attribute.</summary>
         TBuilder Remove<R>(Expression<Func<TEntity, R>> property);
+
+        /// <summary>Sets an attribute to a value. Setting a null/empty value removes the attribute.</summary>
         TBuilder Set<R>(Expression<Func<TEntity, R>> property, R value);
+
+        /// <summary>Atomically increments a numeric attribute.</summary>
         TBuilder Increment<R>(Expression<Func<TEntity, R>> property, R incrementBy);
+
+        /// <summary>Atomically decrements a numeric attribute.</summary>
         TBuilder Decrement<R>(Expression<Func<TEntity, R>> property, R incrementBy);
+
+        /// <summary>Appends elements to a list attribute (creating the list if absent).</summary>
         TBuilder Add<R>(Expression<Func<TEntity, IEnumerable<R>>> property, params R[] elements);
+
+        /// <summary>Merges the non-null members of a partial object into the item (a bulk <c>Set</c>).</summary>
         TBuilder With<R>(R value);
     }
 

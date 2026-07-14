@@ -8,30 +8,48 @@ using System.Runtime.InteropServices;
 namespace CloudMesh.Variant;
 
 /// <summary>
-/// The main point of this struct is to prevent boxing of value types when setting them aside in an array or passing
-/// them as arguments to methods. In order to gather arbitrary value types, it's common to use an object array
-/// for the purpose, like so:
-/// 
-/// object?[] values = new object?[n];
-/// values[0] = 4;    // int is boxed here
-/// values[1] = null; // no boxing
-/// values[2] = true; // boolean value is boxed here
-///
-/// The problem with this approach is that in order to store a value type as an object in the array, dotnet will
-/// box the value (allocate a struct on the heap to wrap the value).
-/// In high performance situations, this can lead to millions of heap additional allocations and significant pressure
-/// on the garbage collector, just to box value types.
-///
-/// This struct avoids boxing insofar as it's possible, for most value types, so you can have:
-///
-/// Value[] values = new Value[n];
-/// values[0] = 4;    // No boxing
-/// values[1] = null; // No boxing
-/// values[2] = true; // No boxing
-///
-/// This allows us to parse the property values of a JSON record and set the values aside, and then rearrange them
-/// in the order that the bulk loader requires them, and then emit them there, all without any boxing occurring.
+/// A boxing-free discriminated union that can carry any common value type (or any reference) in a single,
+/// fixed-size 24-byte struct (an object reference plus a 16-byte inline union).
 /// </summary>
+/// <remarks>
+/// <para>
+/// When you need to gather arbitrary values into an array or pass them around as a common type, the usual
+/// approach is an <c>object?[]</c> — but storing a value type as <see cref="object"/> <b>boxes</b> it
+/// (a heap allocation per value). In hot paths this can mean millions of allocations and heavy GC pressure:
+/// </para>
+/// <code>
+/// object?[] values = new object?[3];
+/// values[0] = 4;     // int    → boxed (heap allocation)
+/// values[1] = null;  // null   → no boxing
+/// values[2] = true;  // bool   → boxed (heap allocation)
+/// </code>
+/// <para>
+/// <see cref="Value"/> stores primitives, enums, <see cref="Guid"/>, <see cref="DateTime"/>,
+/// <see cref="DateTimeOffset"/>, <see cref="ArraySegment{T}"/> of <see cref="byte"/>/<see cref="char"/>, and
+/// small unmanaged <see langword="struct"/>s <b>inline</b> in an overlapped field, so none of them box:
+/// </para>
+/// <code>
+/// Value[] values = new Value[3];
+/// values[0] = 4;     // int   → no boxing
+/// values[1] = null;  // null  → no boxing
+/// values[2] = true;  // bool  → no boxing
+///
+/// int i = values[0].As&lt;int&gt;();      // round-trips back out without boxing
+/// bool b = (bool)values[2];         // explicit conversion operators also work
+/// </code>
+/// <para>
+/// Read a value back with <see cref="As{T}"/> (throws on a type mismatch) or <see cref="TryGetValue{T}"/>
+/// (returns <see langword="false"/>). Both honour <see cref="Nullable{T}"/>: a stored <c>int</c> can be read
+/// as <c>int?</c>, and a stored <see langword="null"/> reads back as any nullable or reference type. Reference
+/// types and large/managed structs are still held as a plain object reference (no extra allocation beyond the
+/// object itself). Use <see cref="Type"/> and <see cref="IsNull"/> to inspect what is stored.
+/// </para>
+/// <para>
+/// The layout is <see cref="LayoutKind.Explicit"/>: an <see cref="object"/> reference (either the payload
+/// itself, or an internal type-flag marker identifying the inline value's type) overlaps with an inline
+/// <c>Union</c> holding the bits of value types.
+/// </para>
+/// </remarks>
 [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Unicode)]
 public readonly partial struct Value
 {
@@ -41,12 +59,22 @@ public readonly partial struct Value
     [FieldOffset(8)]
     internal readonly Union _union;
 
+    /// <summary>
+    /// Wraps a reference (or a boxed value) directly, storing it as-is. Prefer the type-specific constructors
+    /// or <see cref="Create{T}"/> for value types, so they are stored inline rather than boxed.
+    /// </summary>
+    /// <param name="value">The object to store, or <see langword="null"/>.</param>
     public Value(object? value)
     {
         _object = value;
         _union = default;
     }
 
+    /// <summary>
+    /// Gets the runtime <see cref="System.Type"/> of the stored value, or <see langword="null"/> if the value
+    /// is <see langword="null"/>. Inline value types report their real type (e.g. <c>typeof(int)</c>), not the
+    /// internal storage type.
+    /// </summary>
     public readonly Type? Type
     {
         [SkipLocalsInit]
@@ -87,6 +115,7 @@ public readonly partial struct Value
         }
     }
     
+    /// <summary>Gets whether this <see cref="Value"/> stores <see langword="null"/>.</summary>
     public bool IsNull => _object is null;
 
     [DoesNotReturn]
@@ -567,13 +596,28 @@ public readonly partial struct Value
     #endregion
     
     #region Decimal
-    public static implicit operator Value(decimal value) => new(value);
+    public static implicit operator Value(decimal value) => Value.Create(value);
     public static explicit operator decimal(in Value value) => value.As<decimal>();
-    public static implicit operator Value(decimal? value) => value.HasValue ? new(value.Value) : new(value);
+    public static implicit operator Value(decimal? value) => Value.Create(value);
     public static explicit operator decimal?(in Value value) => value.As<decimal?>();
     #endregion
     
     #region T
+    /// <summary>
+    /// Creates a <see cref="Value"/> from a value of an arbitrary type <typeparamref name="T"/>, choosing the
+    /// boxing-free inline representation whenever possible.
+    /// </summary>
+    /// <typeparam name="T">The type of the value being stored. May be a primitive, a nullable primitive, an
+    /// enum, a small unmanaged struct, or any reference type.</typeparam>
+    /// <param name="value">The value to store.</param>
+    /// <returns>A <see cref="Value"/> wrapping <paramref name="value"/>.</returns>
+    /// <remarks>
+    /// Primitives, their <see cref="Nullable{T}"/> forms, <see cref="DateTime"/>, <see cref="DateTimeOffset"/>,
+    /// <see cref="ArraySegment{T}"/> of <see cref="byte"/>/<see cref="char"/>, enums, and any unmanaged struct
+    /// small enough to fit inline are stored <b>without boxing</b>. Everything else is stored as an object
+    /// reference. This is the generic entry point used when <typeparamref name="T"/> is only known at
+    /// compile time (e.g. from a generic method); the implicit conversion operators call into it.
+    /// </remarks>
     public static Value Create<T>(T value)
     {
         var valueType = typeof(T);
@@ -640,6 +684,24 @@ public readonly partial struct Value
         _union.UInt64 = u;
     }
 
+    /// <summary>
+    /// Attempts to read the stored value as <typeparamref name="T"/> without boxing.
+    /// </summary>
+    /// <typeparam name="T">The type to read the value as. Honours <see cref="Nullable{T}"/> — a stored
+    /// primitive can be read as its nullable form, and a stored <see langword="null"/> succeeds for any
+    /// nullable or reference type.</typeparam>
+    /// <param name="value">When this returns <see langword="true"/>, the extracted value; otherwise the
+    /// default of <typeparamref name="T"/>.</param>
+    /// <returns><see langword="true"/> if the stored value is compatible with <typeparamref name="T"/>;
+    /// otherwise <see langword="false"/>.</returns>
+    /// <example>
+    /// <code>
+    /// Value v = 42;
+    /// v.TryGetValue&lt;int&gt;(out var i);   // true, i == 42
+    /// v.TryGetValue&lt;int?&gt;(out var n);  // true, n == 42
+    /// v.TryGetValue&lt;long&gt;(out _);      // false — no implicit widening
+    /// </code>
+    /// </example>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool TryGetValue<T>(out T value)
     {
@@ -946,6 +1008,16 @@ public readonly partial struct Value
         return result;
     }
 
+    /// <summary>
+    /// Reads the stored value as <typeparamref name="T"/> without boxing, throwing if the stored value is not
+    /// compatible.
+    /// </summary>
+    /// <typeparam name="T">The type to read the value as. Honours <see cref="Nullable{T}"/> exactly as
+    /// <see cref="TryGetValue{T}"/> does.</typeparam>
+    /// <returns>The extracted value.</returns>
+    /// <exception cref="InvalidCastException">The stored value is not compatible with
+    /// <typeparamref name="T"/>.</exception>
+    /// <seealso cref="TryGetValue{T}"/>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly T As<T>()
     {
