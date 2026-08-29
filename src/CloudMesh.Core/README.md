@@ -11,17 +11,17 @@ dotnet add package CloudMesh.Core
 
 ## What's in the box
 
-| Area | Type | For |
-|---|---|---|
-| Async coordination | `AsyncLock` | An awaitable mutex that's safe to hold across `await` and re-enter from the same async flow. |
-| | `AsyncReaderWriterLock` | An awaitable reader/writer lock. |
-| | `AsyncLazy<T>` | `Lazy<T>` with asynchronous initialization. |
-| Rate limiting | `Throttler<TKey>` | Global + per-key concurrency and rate limiting for staying within a dependency's limits. |
-| Parsing | `OptimizationHelpers.FastTryParseDecimal` | A low-allocation `decimal.TryParse` for hot paths (CSV/numeric feeds), with pluggable `DecimalSeparators`. |
-| IO | `BufferedStreamLineReader` | Statically-buffered line reader — stream millions of rows with little to no GC. |
-| | `SpillStream` | Seekable read/write stream backed by a bounded paged cache; spills cold pages to a temp file only when needed. |
-| Memory | `MemoryHelper` | Grow/align pooled `Memory<T>` buffers. |
-| Collections | `ConcurrentList<T>`, `PriorityQueue<T>` | Small concurrent/utility collections. |
+| Area | Type                                                                  | For |
+|---|-----------------------------------------------------------------------|---|
+| Async coordination | `AsyncLock`                                                           | An awaitable mutex that's safe to hold across `await` and re-enter from the same async flow. |
+| | `AsyncReaderWriterLock`                                               | An awaitable reader/writer lock. |
+| | `AsyncLazy<T>`                                                        | `Lazy<T>` with asynchronous initialization. |
+| Rate limiting | `Throttler<TKey>`                                                     | Global + per-key concurrency and rate limiting for staying within a dependency's limits. |
+| Parsing | `OptimizationHelpers.FastTryParseDecimal`                             | A low-allocation `decimal.TryParse` for hot paths (CSV/numeric feeds), with pluggable `DecimalSeparators`. |
+| IO | `BufferedStreamLineReader`,`                                           | Statically-buffered line reader — stream millions of rows with little to no GC. |
+| | `SpillStream`                                                         | Seekable read/write stream backed by a bounded paged cache; spills cold pages to a temp file only when needed. |
+| Memory | `MemoryHelper`                                                        | Grow/align pooled `Memory<T>` buffers. |
+| Collections | `ConcurrentList<T>`, `PriorityQueue<T>`                               | Small concurrent/utility collections. |
 | Helpers | `JsonHelper`, `DateHelper`, `ActivityExtensions`, `HashSetExtensions` | Assorted convenience helpers. |
 
 ## Examples
