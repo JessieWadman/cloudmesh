@@ -7,7 +7,7 @@ MurmurHash is a non-cryptographic hash designed for speed and good distribution:
 hash tables, bloom filters, consistent hashing, and deterministic bucketing. Unlike `string.GetHashCode()`,
 these produce **stable values across processes and runs**, so you can persist or compare them.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 - Three algorithm variants covering 32/64/128-bit output widths.
 - Adapted from the [Akka.NET](https://github.com/akkadotnet/akka.net) project — see [Credits](#credits).
 

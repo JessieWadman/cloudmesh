@@ -292,7 +292,7 @@ dotnet test
 ```
 
 Package versions are managed centrally (`Directory.Packages.props`), and all projects multi-target
-`net8.0;net9.0;net10.0`.
+§`net8.0;net9.0;net10.0;net11.0`.
 
 ## License
 

@@ -7,7 +7,7 @@ When a 128-bit `Guid` is more than you want to store, index, or exchange, `Guid6
 `long` that is unique across up to 1024 nodes, approximately ordered by creation time, and prints as a tidy
 13-character string. It implicitly converts to/from `long`, so it drops into existing numeric columns and APIs.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 - Thread-safe, monotonic generation; up to **4096 ids per node per millisecond**.
 - Full BCL citizen: `IEquatable`, `IComparable`, `ISpanFormattable`, `IParsable`, `ISpanParsable`.
 

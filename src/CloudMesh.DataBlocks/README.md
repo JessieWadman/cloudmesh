@@ -4,7 +4,7 @@ A lightweight, in-process **actor / pipeline** library built on `System.Threadin
 actor framework that went on a diet: message-driven components you wire into high-throughput processing pipelines
 — fan-out, fan-in, batching, aggregation, round-robin — without pulling in a full actor runtime.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 
 ```bash
 dotnet add package CloudMesh.DataBlocks

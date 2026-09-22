@@ -9,7 +9,7 @@ compiled into get/set delegates (via expression trees); those delegates, the per
 collection metadata are all cached, so repeated access is fast. Writing auto-creates the objects, dictionary
 entries, and list slots it needs along the way.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 - Lists, arrays, and dictionaries supported, including chained indexers.
 - No allocation on the read path once a value type isn't involved; compiled accessors are reused process-wide.
 

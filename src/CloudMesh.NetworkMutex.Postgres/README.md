@@ -8,7 +8,7 @@ contract. Prefer this backend when you already run Postgres and want **blocking*
 crash-safe release (no lease to tune). For a DynamoDB backend, see
 [CloudMesh.NetworkMutex.DynamoDB](https://github.com/JessieWadman/cloudmesh/tree/main/src/CloudMesh.NetworkMutex.DynamoDB).
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 
 ---
 

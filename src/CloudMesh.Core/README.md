@@ -3,7 +3,7 @@
 Common, allocation-conscious building blocks for .NET services — async coordination primitives, fast parsing,
 buffered IO, and small utility collections. The foundation package much of the rest of CloudMesh builds on.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 
 ```bash
 dotnet add package CloudMesh.Core

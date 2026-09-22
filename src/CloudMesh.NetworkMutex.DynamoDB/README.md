@@ -8,7 +8,7 @@ contract. Prefer this backend on AWS / serverless where you don't want to run a 
 blocking, transaction-based backend, see
 [CloudMesh.NetworkMutex.Postgres](https://github.com/JessieWadman/cloudmesh/tree/main/src/CloudMesh.NetworkMutex.Postgres).
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 
 ---
 

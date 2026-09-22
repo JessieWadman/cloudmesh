@@ -25,7 +25,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.Persistence.Dynam
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CloudMesh.DataBlocks", "src\CloudMesh.DataBlocks\CloudMesh.DataBlocks.csproj", "{7A617319-3F49-4E65-856C-F4E1537D1D37}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3B86E5C2-9A41-4EA6-B76C-8532069CE0B1}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".props", ".props", "{3B86E5C2-9A41-4EA6-B76C-8532069CE0B1}"
 	ProjectSection(SolutionItems) = preProject
 		Directory.Build.props = Directory.Build.props
 		Directory.Packages.props = Directory.Packages.props
@@ -121,6 +121,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.Xml", "src\CloudMesh.Xml\CloudMesh.Xml.csproj", "{FC8EF61E-8621-45F0-B224-1F453A4E2981}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudMesh.Xml.Tests", "test\CloudMesh.Xml.Tests\CloudMesh.Xml.Tests.csproj", "{C4EB915C-2764-46FD-9AF0-5F6DB507D82E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VariantSample", "samples\VariantSample\VariantSample.csproj", "{A4947357-CBD7-4618-8C8F-F79AF93A2C67}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -672,6 +674,18 @@ Global
 		{C4EB915C-2764-46FD-9AF0-5F6DB507D82E}.Release|x64.Build.0 = Release|Any CPU
 		{C4EB915C-2764-46FD-9AF0-5F6DB507D82E}.Release|x86.ActiveCfg = Release|Any CPU
 		{C4EB915C-2764-46FD-9AF0-5F6DB507D82E}.Release|x86.Build.0 = Release|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Debug|x64.Build.0 = Debug|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Debug|x86.Build.0 = Debug|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Release|x64.ActiveCfg = Release|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Release|x64.Build.0 = Release|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Release|x86.ActiveCfg = Release|Any CPU
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -725,6 +739,7 @@ Global
 		{70A6CB02-29E3-41A9-B70C-271E345417D0} = {67DBDB7E-2D7D-4948-AB88-A754CA563834}
 		{FC8EF61E-8621-45F0-B224-1F453A4E2981} = {A96A479E-9685-4C75-B033-3A375E2AB57D}
 		{C4EB915C-2764-46FD-9AF0-5F6DB507D82E} = {C60F40DA-B95F-4571-9983-8A342046D60A}
+		{A4947357-CBD7-4618-8C8F-F79AF93A2C67} = {9687377C-3528-4E84-A6A4-96B21F36CEC2}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1B0642CC-1BC5-42D7-9CE3-87B1D1080B36}

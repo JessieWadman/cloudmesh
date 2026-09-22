@@ -19,6 +19,5 @@
 
     <ItemGroup>
         <PackageReference Include="Npgsql" />
-        <PackageReference Include="System.Text.Json" />
     </ItemGroup>    
 </Project>

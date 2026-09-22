@@ -10,7 +10,7 @@ encodings (such as UTF-16, ISO-8859-1, Windows-1252, or EBCDIC), `XmlEncodingDet
 declarations to identify the charset, while `EncodedXmlReader` and `CodePageTransformer` transcode the stream on
 the fly into pooled buffers.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 - **Allocation-free UTF-8 tokenizer:** `Utf8XmlReader` parses directly from `ReadOnlySpan<byte>` with zero heap allocations.
 - **Automatic encoding detection & transcoding:** Parse arbitrary XML encodings seamlessly via `EncodedXmlReader`.
 

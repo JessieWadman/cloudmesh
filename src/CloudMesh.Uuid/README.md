@@ -8,7 +8,7 @@ UUID v7 (RFC 9562) stores a millisecond timestamp in its high bits, so ids gener
 sequential key while staying 128-bit globally unique. This package returns a plain `System.Guid`, so it slots
 straight into EF Core keys, `Guid` columns, and any API that already expects one.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 - **Allocation-free** and about **1.5× faster than `Guid.NewGuid()`**, ~2.5× faster than `Guid.CreateVersion7()`.
 - Timestamp comes from [`FastClock`](https://github.com/JessieWadman/cloudmesh/tree/main/src/CloudMesh.Timestamp),
   so the embedded time stays accurate (NTP/VM-resume aware) without paying for `DateTimeOffset.UtcNow` per id.

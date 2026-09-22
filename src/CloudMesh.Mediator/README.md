@@ -8,7 +8,7 @@ source generator** so dispatch is **box-free** and registration is **reflection-
 generator ships inside this package as an analyzer, so the box-free overloads and compile-time diagnostics work
 automatically once you reference it.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 - `ValueTask`-based throughout; zero allocation on the box-free send path and on notification fan-out.
 - MediatR-compatible shims so most existing code ports by swapping `using` directives.
 

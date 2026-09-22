@@ -4,7 +4,7 @@ A **lightweight repository pattern for AWS DynamoDB** — a small, fluent API ov
 conditional writes, partial (patch) updates, secondary-index queries and scans, and atomic transactions. Ships a
 drop-in **in-memory implementation** so you can unit-test persistence code with no AWS dependency.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 
 ---
 

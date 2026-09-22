@@ -41,4 +41,45 @@ public class GuidTests
         // Cast null to valueType
         Assert.Throws<InvalidCastException>(() => (Guid)copiedNullValue);
     }
+
+    [Fact]
+    public void NullableGuid_IsStoredInline_NotBoxed()
+    {
+        // Unsafe.SizeOf<Guid?>() is 20, over the 16-byte union — but only the 16-byte payload is ever stored,
+        // because a Value records "no value" as a null _object.
+        var expected = Guid.NewGuid();
+        Guid? nullable = expected;
+
+        Value value = nullable;
+
+        Assert.IsType<Value.StraightCastFlag<Guid>>(value._object);
+        Assert.Equal(typeof(Guid), value.Type);
+        Assert.Equal(expected, value.As<Guid?>());
+        Assert.Equal(expected, value.As<Guid>());
+    }
+
+    [Fact]
+    public void NullableGuid_Null_StoresNull()
+    {
+        Value value = (Guid?)null;
+
+        Assert.Null(value._object);
+        Assert.Null(value.Type);
+        Assert.Null(value.As<Guid?>());
+    }
+
+    [Fact]
+    public void NullableGuid_DoesNotBoxPerElement()
+    {
+        Guid? g = Guid.NewGuid();
+        var values = new Value[100];
+
+        for (var i = 0; i < values.Length; i++) values[i] = g;
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < values.Length; i++) values[i] = g;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(0, allocated);
+    }
 }

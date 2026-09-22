@@ -7,7 +7,7 @@ suspend/resume, plus a fast wall-clock reader when you actually need the time of
 which quietly breaks timeout, retry, and expiry logic built on subtracting two of them. This package gives you
 value types whose difference is a true, forward-only duration — and it's faster to capture, too.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 - Every capture is a single `long`: zero allocation, no boxing, no kernel transition on the hot path.
 - Three tools for three jobs: [`Timestamp`](#timestamp), [`HighResolutionTimestamp`](#highresolutiontimestamp),
   and [`FastClock`](#fastclock).

@@ -9,7 +9,7 @@ metrics surface, but ships no lock engine. Pick a backend implementation:
 - **[CloudMesh.NetworkMutex.Postgres](https://github.com/JessieWadman/cloudmesh/tree/main/src/CloudMesh.NetworkMutex.Postgres)** — borrows a Postgres transaction + row/table lock. Contenders block until the holder commits (on dispose).
 - **[CloudMesh.NetworkMutex.DynamoDB](https://github.com/JessieWadman/cloudmesh/tree/main/src/CloudMesh.NetworkMutex.DynamoDB)** — borrows DynamoDB optimistic conditional updates + a time-boxed lease. A crashed holder's lock expires automatically.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 
 ---
 

@@ -61,7 +61,7 @@ public readonly partial struct Value
 
     /// <summary>
     /// Wraps a reference (or a boxed value) directly, storing it as-is. Prefer the type-specific constructors
-    /// or <see cref="Create{T}"/> for value types, so they are stored inline rather than boxed.
+    /// or <see cref="Create{T}(T)"/> for value types, so they are stored inline rather than boxed.
     /// </summary>
     /// <param name="value">The object to store, or <see langword="null"/>.</param>
     public Value(object? value)
@@ -652,6 +652,13 @@ public readonly partial struct Value
         if (valueType == typeof(DateTime?)) return new(Unsafe.As<T, DateTime?>(ref Unsafe.AsRef(in value)));
         if (valueType == typeof(DateTimeOffset?)) return new(Unsafe.As<T, DateTimeOffset?>(ref Unsafe.AsRef(in value)));
 
+        // decimal? and Guid? have no dedicated constructor, so they route through the Nullable<T> overload
+        // below. Without these two lines they would fall through to the size check, where
+        // Unsafe.SizeOf<decimal?>() (24) and Unsafe.SizeOf<Guid?>() (20) exceed the 16-byte union and the
+        // value would be boxed — even though only the 16-byte payload ever needs to fit.
+        if (valueType == typeof(decimal?)) return Create(Unsafe.As<T, decimal?>(ref Unsafe.AsRef(in value)));
+        if (valueType == typeof(Guid?)) return Create(Unsafe.As<T, Guid?>(ref Unsafe.AsRef(in value)));
+
         if (valueType == typeof(ArraySegment<byte>)) return new(Unsafe.As<T, ArraySegment<byte>>(ref Unsafe.AsRef(in value)));
         if (valueType == typeof(ArraySegment<char>)) return new(Unsafe.As<T, ArraySegment<char>>(ref Unsafe.AsRef(in value)));
         
@@ -675,6 +682,33 @@ public readonly partial struct Value
 
         return new Value(value);
     }
+
+    /// <summary>
+    /// Creates a <see cref="Value"/> from a <see cref="Nullable{T}"/> without boxing, by unwrapping it to
+    /// either <see langword="null"/> or its underlying value.
+    /// </summary>
+    /// <typeparam name="T">The underlying type of the nullable.</typeparam>
+    /// <param name="value">The value to store, which may have no value.</param>
+    /// <returns>A <see cref="Value"/> wrapping <paramref name="value"/>.</returns>
+    /// <remarks>
+    /// <para>
+    /// A <see cref="Value"/> records "no value" as a <see langword="null"/> object reference, so the
+    /// <see cref="Nullable{T}"/> has-value flag never needs to be stored — which means only the underlying
+    /// <typeparamref name="T"/> has to fit the inline union, not <c>Nullable&lt;T&gt;</c>. That matters for the
+    /// 16-byte payloads: <c>Unsafe.SizeOf&lt;decimal?&gt;()</c> is 24 and <c>Unsafe.SizeOf&lt;Guid?&gt;()</c> is
+    /// 20 once the flag and its padding are counted, both over the 16-byte union, while <c>decimal</c> and
+    /// <c>Guid</c> themselves fit it exactly.
+    /// </para>
+    /// <para>
+    /// The compiler prefers this overload over <see cref="Create{T}(T)"/> whenever the argument is a nullable
+    /// whose type is known at the call site, so <typeparamref name="T"/> is the <i>underlying</i> type and no
+    /// runtime size or type test is needed.
+    /// </para>
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Value Create<T>(T? value)
+        where T : struct
+        => value.HasValue ? Create(value.Value) : default;
 
     [SkipLocalsInit]
     private Value(object o, ulong u)

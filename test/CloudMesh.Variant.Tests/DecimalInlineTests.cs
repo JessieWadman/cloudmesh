@@ -27,16 +27,57 @@ public class DecimalInlineTests
     }
 
     [Fact]
+    public void NullableDecimal_IsStoredInline_NotBoxed()
+    {
+        // Unsafe.SizeOf<decimal?>() is 24 — the has-value flag plus padding pushes it past the 16-byte union.
+        // But the flag never needs storing: a Value records "no value" as a null _object, so only the 16-byte
+        // payload has to fit. A nullable decimal must therefore store exactly like a non-nullable one.
+        decimal? d = 42.5m;
+        Value value = d;
+
+        Assert.IsType<Value.StraightCastFlag<decimal>>(value._object);
+        Assert.Equal(typeof(decimal), value.Type);
+    }
+
+    [Fact]
     public void NullableDecimal_RoundTrips_FromValue()
     {
-        // A *nullable* 16-byte value type (decimal?, like Guid?) exceeds the 16-byte union once the has-value
-        // flag is included, so it boxes — consistent with Guid?. Only the non-nullable form stores inline.
         decimal? d = 42.5m;
         Value value = d;
 
         var back = value.As<decimal?>();
         Assert.True(back.HasValue);
         Assert.Equal(42.5m, back!.Value);
+
+        // Stored as the underlying type, so it also reads back non-nullable.
+        Assert.Equal(42.5m, value.As<decimal>());
+    }
+
+    [Fact]
+    public void NullableDecimal_StoredIntoArray_DoesNotBoxPerElement()
+    {
+        decimal? d = 42.5m;
+        var values = new Value[100];
+
+        // Warm up the JIT and any first-use caches.
+        for (var i = 0; i < values.Length; i++) values[i] = d;
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < values.Length; i++) values[i] = d;
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(0, allocated);
+    }
+
+    [Fact]
+    public void NullableDecimal_ViaRuntimeGenericCreate_IsStoredInline()
+    {
+        // Create<T> with T known only at runtime cannot pick the Nullable<T> overload, so it relies on the
+        // typeof(T) == typeof(decimal?) fast path instead of the size check, which would box.
+        var value = Value.Create<decimal?>(42.5m);
+
+        Assert.IsType<Value.StraightCastFlag<decimal>>(value._object);
+        Assert.Equal(42.5m, value.As<decimal>());
     }
 
     [Fact]

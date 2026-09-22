@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <!-- Union types are a .NET 11 / C# 15 feature, so this sample pins to net11.0 rather than
+             inheriting the repo-wide TargetFrameworks. -->
+        <TargetFrameworks>net11.0</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\..\src\CloudMesh.Variant\CloudMesh.Variant.csproj" />
+    </ItemGroup>
+
+</Project>

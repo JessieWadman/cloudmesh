@@ -8,7 +8,7 @@ Instead of mutating an object in place, `Temporal<T>` records changes as a timel
 effective on or before that date to materialize the object as it stood then. Past values, the present, and
 pending future changes all live side by side in a single instance.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 - Nested property selectors (`e => e.Address.City`), powered by
   [CloudMesh.DotNotation](https://github.com/JessieWadman/cloudmesh/tree/main/src/CloudMesh.DotNotation).
 - JSON (de)serialization of the pending-change timeline, and history compaction.

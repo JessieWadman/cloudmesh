@@ -8,7 +8,7 @@ confusable characters `I`, `L`, `O`, and `U`, so encoded ids are safe to read al
 package encodes into a `Span<char>` you own — no intermediate strings, no `byte[]` churn — making it ideal for
 hot paths and id formatting.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 - No padding (`=`) characters; always the Crockford alphabet `0123456789ABCDEFGHJKMNPQRSTVWXYZ`.
 - Fixed-width integer encodings that are **lexically sortable** (same order as the numbers).
 

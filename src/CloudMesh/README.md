@@ -4,7 +4,7 @@ The umbrella package for **CloudMesh** — a collection of small, focused, high-
 cloud solutions. Each component ships as its own NuGet package with a single responsibility and minimal
 dependencies, so you normally install just the pieces you need.
 
-- **Targets:** .NET 8, 9, 10 — **License:** MIT
+- **Targets:** .NET 8, 9, 10, 11 — **License:** MIT
 
 ## Prefer the focused packages
 

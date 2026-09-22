@@ -8,10 +8,24 @@
   <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
     <MicrosoftExtensionsVersion>[10.0,)</MicrosoftExtensionsVersion>
   </PropertyGroup>
-  
-  <ItemGroup>
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0" />
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
+    <!-- Runtime libraries use the 11.0.0-* band; 11.0.100-* is the SDK version band, not the package
+         version. The full build number is required because 11.0.0-rc.1 is not itself a published
+         version, and a range floor that matches nothing raises NU1603. -->
+    <MicrosoftExtensionsVersion>[11.0.0-rc.1.26425.128,)</MicrosoftExtensionsVersion>
+  </PropertyGroup>
 
+  <!-- System.IO.Hashing is not aligned with the target framework: Microsoft.SourceLink.GitHub 10.x
+       depends on 10.0.12, and a lower direct floor is a package downgrade (NU1605). -->
+  <PropertyGroup>
+    <SystemIOHashingVersion>[10.0.12,)</SystemIOHashingVersion>
+    <SystemIOHashingVersion Condition="'$(TargetFramework)' == 'net11.0'">[11.0.0-rc.1.26425.128,)</SystemIOHashingVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Build-time only, so it is not versioned per target framework. 10.x or later is required:
+         8.0 pulls Microsoft.Build.Tasks.Git 8.0.0, which has a known vulnerability (NU1902). -->
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="[10.0.401,)" />
     <!-- Roslyn for the source generator. Pinned to 4.8.0 (ships with .NET SDK 8.0.100+) so the analyzer
          loads on the widest range of consumer SDKs. Analyzers must target netstandard2.0. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
@@ -39,8 +53,7 @@
     <PackageVersion Include="xunit.runner.visualstudio" Version="[3.0,)" />
     <PackageVersion Include="coverlet.collector" Version="6.0" />
     <PackageVersion Include="Moq" Version="[4.20.72,)" />
-    <PackageVersion Include="System.Text.Json" Version="[10.0,)" />   
-    <PackageVersion Include="System.IO.Hashing" Version="$(MicrosoftExtensionsVersion)" />
+    <PackageVersion Include="System.IO.Hashing" Version="$(SystemIOHashingVersion)" />
     <PackageVersion Include="System.Net.Http" Version="[4.3.4,)" />
     <PackageVersion Include="System.Text.RegularExpressions" Version="[4.3.1,)" />
     <PackageVersion Include="System.Linq" Version="[4.3,)" />
@@ -48,6 +61,6 @@
   </ItemGroup>
   
   <ItemGroup>
-    <PackageReference Include="Microsoft.SourceLink.GitHub" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="all" />
   </ItemGroup>
 </Project>
