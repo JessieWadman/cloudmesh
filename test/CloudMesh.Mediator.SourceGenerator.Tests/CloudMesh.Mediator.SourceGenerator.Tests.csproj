@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <!-- Test project runs on a modern runtime; single TFM keeps the generator tests fast. -->
-        <TargetFramework>net10.0</TargetFramework>
-        <TargetFrameworks></TargetFrameworks>
+        <!-- Generator tests are compile-time tests, so one runtime would be enough — but the publish
+             workflow runs `dotnet test -f net11.0` across the solution, and a project without net11.0
+             assets fails that pass with NETSDK1005 and blocks the release. Carrying both TFMs costs about
+             a second and keeps the release from depending on which frameworks each test project happens
+             to declare. -->
+        <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsPackable>false</IsPackable>
