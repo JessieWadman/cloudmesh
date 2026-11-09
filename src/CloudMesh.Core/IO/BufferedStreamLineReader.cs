@@ -133,23 +133,38 @@ public class BufferedStreamLineReader
     
     private async Task<bool> ReadMoreAsync(CancellationToken cancellationToken)
     {
-        var numberOfBytesRead = await stream!.ReadAsync(readBuffer, cancellationToken);
-        endOfStream = numberOfBytesRead < readBuffer.Length;
-        readBufferToExamine = readBuffer[..numberOfBytesRead];
+        // Stream.ReadAsync is allowed to return fewer bytes than requested for reasons that have nothing to do
+        // with end-of-stream (network/TLS chunking, a slow underlying transport, etc.) — only a 0-byte read means
+        // EOF. Loop until the buffer is full or the stream truly has no more bytes to give; otherwise a short read
+        // (e.g. 43 bytes of a 198-byte line) gets mistaken for EOF and handed back as a truncated "line".
+        var totalBytesRead = 0;
+        endOfStream = false;
+        while (totalBytesRead < readBuffer.Length)
+        {
+            var numberOfBytesRead = await stream!.ReadAsync(readBuffer[totalBytesRead..], cancellationToken);
+            if (numberOfBytesRead == 0)
+            {
+                endOfStream = true;
+                break;
+            }
+
+            totalBytesRead += numberOfBytesRead;
+        }
+
+        readBufferToExamine = readBuffer[..totalBytesRead];
 
         // Reached end of stream, and still have remainder?
-        if (numberOfBytesRead == 0 && remainderFromPreviousRead.Length > 0)
+        if (totalBytesRead == 0 && remainderFromPreviousRead.Length > 0)
         {
-            endOfStream = true;
             currentLineBytes = remainderFromPreviousRead;
             remainderFromPreviousRead = ReadOnlyMemory<byte>.Empty;
             return true;
         }
 
         // Use the opportunity when we try to read more from stream and fail to release remainder buffer
-        if (numberOfBytesRead < 1)
+        if (totalBytesRead < 1)
             ShrinkRemainderBuffer();
-        
+
         return TryGetNextLineFromBuffer();
     }
 
