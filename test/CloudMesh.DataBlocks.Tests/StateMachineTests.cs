@@ -22,10 +22,11 @@ public class StateMachineTests
         await stateMachine.SubmitAsync(Signals.Restart.Instance, testProbe);
         testProbe.Expect<Signals.InvalidState>();
         
-        // Then, expect no message for a little time while it does its simulated work
+        // Then, expect it to stay in Running, without reporting anything, until its work finishes
         testProbe.ExpectNoMessage(50);
 
-        // Then, expect it to automatically transition to Done state
+        // Then, expect it to transition to Done state once the work finishes
+        await stateMachine.SubmitAsync(Signals.Finished.Instance, testProbe);
         testProbe.Expect<Signals.StateChanged>(10000, x => x.State == "Done");
         
         // Then, expect it to transition back to Running state on Restart signal
@@ -33,16 +34,12 @@ public class StateMachineTests
         testProbe.Expect<Signals.StateChanged>(10000, x => x.State == "Running");
         
         // And finally to transition to Done state.
+        await stateMachine.SubmitAsync(Signals.Finished.Instance, testProbe);
         testProbe.Expect<Signals.StateChanged>(10000, x => x.State == "Done");
     }
     
     private class TestStateMachine : DataBlock
     {
-        // Simulated work delay before the Running -> Done auto-transition. Kept well above the
-        // test's ExpectNoMessage(50) window so poll-granularity jitter on a constrained CI runner
-        // cannot let the Done transition race into that window (was 150ms, ~60ms margin = flaky).
-        private const int WorkDurationMs = 1000;
-
         private readonly WeakReference<ICanSubmit?> monitor;
 
         public TestStateMachine(ICanSubmit? monitor = null)
@@ -70,7 +67,6 @@ public class StateMachineTests
         {
             Receive<Signals.Finished>(_ => Become(Done));
             ReceiveAny(_ => Sender?.SubmitAsync(Signals.InvalidState.Instance, this));
-            DataBlockScheduler.ScheduleTellOnce(this, WorkDurationMs, Signals.Finished.Instance, this);
             
             NotifyStateChanged("Running");
         }
@@ -108,6 +104,8 @@ public class StateMachineTests
             }
         }
         
+        // Sent by the test rather than by a timer: a real-time delay races the test's ExpectNoMessage
+        // window whenever a loaded CI runner starves the thread pool. DataBlockScheduler has its own tests.
         public class Finished
         {
             public static readonly Finished Instance = new();
