@@ -35,7 +35,7 @@ No separate lint command exists; the compiler enforces quality via `TreatWarning
 
 ## Compiler & Language Settings (Directory.Build.props)
 
-- **Target frameworks:** net8.0, net9.0, net10.0
+- **Target frameworks:** net8.0, net9.0, net10.0, net11.0
 - **LangVersion:** preview (latest C# features allowed)
 - **TreatWarningsAsErrors:** true
 - **Nullable:** enabled globally
@@ -93,10 +93,11 @@ Stack-allocated discriminated union using `StructLayout(LayoutKind.Explicit)` wi
 
 - **Framework:** xUnit 2.9.3 with Moq
 - **Test projects:** under `test/` — mirror `src/` package names with `.Tests` suffix
-- **CI runs tests against all three target frameworks** (net8.0, net9.0, net10.0) on PRs
+- **CI runs tests against all four target frameworks** (net8.0, net9.0, net10.0, net11.0) on PRs
 
 ## CI/CD
 
-- **PR validation** (`.github/workflows/pull-requests.yml`): tests against net8.0, net9.0, net10.0 in parallel
-- **Publish** (`.github/workflows/main.yml`): tests net10.0, builds Release, publishes NuGet packages
+- **PR validation** (`.github/workflows/pull-requests.yml`): tests against net8.0, net9.0, net10.0, net11.0 in parallel
+- **Publish** (`.github/workflows/main.yml`): tests net10.0 and net11.0, builds Release, publishes NuGet packages
+- Every CI job installs the 8.0/9.0/10.0 SDKs plus the 11.0 SDK — the newest SDK is required to evaluate `TargetFrameworks` even when a job builds a single framework
 - Version format: `2.0.$GITHUB_RUN_NUMBER`

@@ -21,11 +21,7 @@ jobs:
             8.0.x
             9.0.x
             10.0.x
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '11.0.x'
-          dotnet-quality: 'preview'
+            11.0.x
 
       - name: Set version
         run: echo "VERSION=1.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
@@ -47,11 +43,7 @@ jobs:
             8.0.x
             9.0.x
             10.0.x
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '11.0.x'
-          dotnet-quality: 'preview'
+            11.0.x
 
       - name: Set version
         run: echo "VERSION=1.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
@@ -73,11 +65,7 @@ jobs:
             8.0.x
             9.0.x
             10.0.x
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '11.0.x'
-          dotnet-quality: 'preview'
+            11.0.x
 
       - name: Set version
         run: echo "VERSION=1.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV
@@ -99,11 +87,7 @@ jobs:
             8.0.x
             9.0.x
             10.0.x
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '11.0.x'
-          dotnet-quality: 'preview'
+            11.0.x
 
       - name: Set version
         run: echo "VERSION=1.0.$GITHUB_RUN_NUMBER" >> $GITHUB_ENV

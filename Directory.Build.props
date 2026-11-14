@@ -2,11 +2,8 @@
     <PropertyGroup>
         <LangVersion>preview</LangVersion>
         <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-        <!-- NU5104: the net11.0 target framework depends on prerelease .NET 11 packages, so packing a
-             stable version warns. Remove this suppression once .NET 11 reaches general availability. -->
-        <NoWarn>CS1591;NU5104</NoWarn>
+        <NoWarn>CS1591</NoWarn>
         <AnalysisLevel>latest</AnalysisLevel>
-        <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
         <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
         <ImplicitUsings>true</ImplicitUsings>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
