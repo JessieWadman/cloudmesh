@@ -19,11 +19,12 @@ namespace CloudMesh.Variant;
 /// type-specific constructors that store inline instead of boxing.
 /// </para>
 /// <para>
-/// The scalar case types are declared in their <see cref="Nullable{T}"/> form — <c>int?</c> rather than
+/// The scalar <c>Create</c> members take the <see cref="Nullable{T}"/> form — <c>int?</c> rather than
 /// <c>int</c> — because a <see cref="Value"/> can always hold <see langword="null"/>. The union contract
-/// matches a nullable case type with a <c>TryGetValue</c> whose <see langword="out"/> parameter is the
-/// underlying type, so one case type per scalar covers both <c>int</c> and <c>int?</c> sources while the
-/// pattern <c>v is int i</c> still binds to <see cref="TryGetValue(out int)"/> and never boxes.
+/// treats a nullable factory parameter as making the <i>underlying</i> type the case type, matched by a
+/// <c>TryGetValue</c> whose <see langword="out"/> parameter is that underlying type. One factory per scalar
+/// therefore accepts both <c>int</c> and <c>int?</c> sources, while the pattern <c>v is int i</c> binds to
+/// <see cref="TryGetValue(out int)"/> and never boxes.
 /// </para>
 /// <para>
 /// Because <see cref="IUnionMembers"/> declares a <c>TryGetValue</c> overload per case type and a
@@ -68,11 +69,11 @@ public readonly partial struct Value : IUnion, Value.IUnionMembers
         // One Create per case type. These define the union's case types and back the implicit union
         // conversion from each of them. Each routes to the constructor (or Create<T>) that stores inline.
         //
-        // The scalar case types are the *nullable* forms, because a Value can always be null and
-        // Value(T?) is the constructor that models that. A nullable case type is matched by a
-        // TryGetValue whose out parameter is the underlying type, so `v is int i` still binds to
-        // TryGetValue(out int) and never boxes. One case type per scalar therefore covers both `int`
-        // and `int?` sources.
+        // The scalar factories take the *nullable* forms, because a Value can always be null and
+        // Value(T?) is the constructor that models that. A nullable factory parameter makes the
+        // underlying type the case type, matched by a TryGetValue whose out parameter is that underlying
+        // type, so `v is int i` still binds to TryGetValue(out int) and never boxes. One factory per
+        // scalar therefore covers both `int` and `int?` sources.
         
         [MethodImpl(MethodImplOptions.AggressiveInlining)] static Value Create(bool? value) => new(value);
         [MethodImpl(MethodImplOptions.AggressiveInlining)] static Value Create(byte? value) => new(value);

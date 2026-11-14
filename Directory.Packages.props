@@ -9,17 +9,14 @@
     <MicrosoftExtensionsVersion>[10.0,)</MicrosoftExtensionsVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(TargetFramework)' == 'net11.0'">
-    <!-- Runtime libraries use the 11.0.0-* band; 11.0.100-* is the SDK version band, not the package
-         version. The full build number is required because 11.0.0-rc.1 is not itself a published
-         version, and a range floor that matches nothing raises NU1603. -->
-    <MicrosoftExtensionsVersion>[11.0.0-rc.1.26425.128,)</MicrosoftExtensionsVersion>
+    <MicrosoftExtensionsVersion>[11.0,)</MicrosoftExtensionsVersion>
   </PropertyGroup>
 
   <!-- System.IO.Hashing is not aligned with the target framework: Microsoft.SourceLink.GitHub 10.x
        depends on 10.0.12, and a lower direct floor is a package downgrade (NU1605). -->
   <PropertyGroup>
     <SystemIOHashingVersion>[10.0.12,)</SystemIOHashingVersion>
-    <SystemIOHashingVersion Condition="'$(TargetFramework)' == 'net11.0'">[11.0.0-rc.1.26425.128,)</SystemIOHashingVersion>
+    <SystemIOHashingVersion Condition="'$(TargetFramework)' == 'net11.0'">[11.0,)</SystemIOHashingVersion>
   </PropertyGroup>
 
   <ItemGroup>

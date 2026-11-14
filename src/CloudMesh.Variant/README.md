@@ -125,11 +125,11 @@ and `value is null` to a `HasValue` check. Neither touches the boxing `Value` ac
 // 1,000,000 iterations of the switch above over an inline int: 0 bytes allocated.
 ```
 
-Each scalar case type is declared in its **nullable** form — `int?`, `bool?`, `DateTime?`, … — because a
-`Value` can always be null, and `Value(T?)` is the constructor that models that. The union contract pairs a
-nullable case type with a `TryGetValue` whose `out` parameter is the *underlying* type, so a single case type
-per scalar covers both `int` and `int?` sources while `v is int i` still binds to `TryGetValue(out int)` and
-never boxes:
+Each scalar factory takes the **nullable** form — `int?`, `bool?`, `DateTime?`, … — because a `Value` can
+always be null, and `Value(T?)` is the constructor that models that. Under the C# 15 rules a nullable factory
+parameter makes the *underlying* type the case type, paired with a `TryGetValue` whose `out` parameter is that
+underlying type. A single factory per scalar therefore accepts both `int` and `int?` sources, while
+`v is int i` binds to `TryGetValue(out int)` and never boxes:
 
 ```csharp
 int? maybe = 42;
@@ -143,15 +143,20 @@ none is int;         // false
 none is null;        // true — matched via HasValue
 ```
 
-The full case-type list is `bool?`, `byte?`, `sbyte?`, `char?`, `short?`, `ushort?`, `int?`, `uint?`, `long?`,
-`ulong?`, `float?`, `double?`, `decimal?`, `Guid?`, `DateTime?`, `DateTimeOffset?`, `ArraySegment<byte>`,
-`ArraySegment<char>`, `string` and `object`. The two `ArraySegment` cases stay non-nullable — an absent segment
-is simply a null `Value`. `object` keeps the union sound, since a `Value` can hold any reference.
+The full case-type list is `bool`, `byte`, `sbyte`, `char`, `short`, `ushort`, `int`, `uint`, `long`,
+`ulong`, `float`, `double`, `decimal`, `Guid`, `DateTime`, `DateTimeOffset` (each created from its nullable
+form), `ArraySegment<byte>`, `ArraySegment<char>`, `string` and `object`. The two `ArraySegment` factories stay
+non-nullable — an absent segment is simply a null `Value`. `object` keeps the union sound, since a `Value` can
+hold any reference.
 
 Notes:
 
 - Patterns apply to the union's **contents**, not to the `Value` struct: `value is Value` does not match, and
-  `value is int` tests the stored value.
+  `value is int` tests the stored value. This changes the meaning of patterns that compiled before C# 15:
+  `value is Value` was always true and is now false, and `value is object` is now false for a null `Value`.
+- A project targeting net11.0 with `LangVersion` pinned below 15 gets error CS9327 ("Feature 'unions' is not
+  available") on any type pattern over a `Value`, such as `value is object`. The non-pattern API is unaffected.
+  The default language version for net11.0 is C# 15, so only projects that pin an older version are affected.
 - The existing conversion operators take priority over the union conversion, so `Value v = 42` still stores
   inline exactly as it does on .NET 8–10. Everything in this section is additive; no existing API changed.
 - `((IUnion)value).Value` is the standard union accessor. It boxes inline value types, by definition — use
