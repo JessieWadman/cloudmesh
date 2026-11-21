@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using Xunit;
 
 namespace CloudMesh.UuidTests;
@@ -82,23 +82,55 @@ public class UuidTests
     }
 
     [Fact]
-    public void Create_isUnique_andThreadSafe()
+    public void Create_embedsTheCurrentTimestamp()
     {
-        // Exercises the Random.Shared fix: a shared, non-thread-safe Random would tear under this load
-        // and emit duplicate / all-zero random bits, producing collisions.
+        var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var id = Uuid.Create();
+        var after = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        Assert.Equal(7, Version(id));
+        Assert.Equal(0b10, Variant(id));
+        // FastClock tracks the wall clock within a small drift; the counter may also run a ms or so ahead.
+        Assert.InRange(Timestamp(id), before - 1_000, after + 1_000);
+    }
+
+    [Fact]
+    public void Create_isStrictlyIncreasing_onOneThread()
+    {
+        var previous = RfcBytes(Uuid.Create());
+        for (var i = 0; i < 200_000; i++)
+        {
+            var current = RfcBytes(Uuid.Create());
+            Assert.True(Compare(previous, current) < 0, $"id #{i} did not sort after its predecessor");
+            previous = current;
+        }
+    }
+
+    [Fact]
+    public void Create_isUnique_andOrderedPerThread_underContention()
+    {
         const int threads = 8;
         const int perThread = 25_000;
 
-        var produced = new ConcurrentBag<Guid>();
-        Parallel.For(0, threads, _ =>
+        var sequences = new Guid[threads][];
+        Parallel.For(0, threads, new ParallelOptions { MaxDegreeOfParallelism = threads }, t =>
         {
+            var ids = new Guid[perThread];
             for (var i = 0; i < perThread; i++)
-                produced.Add(Uuid.Create());
+                ids[i] = Uuid.Create();
+            sequences[t] = ids;
         });
 
-        var all = produced.ToArray();
-        Assert.Equal(threads * perThread, all.Length);
-        Assert.Equal(all.Length, new HashSet<Guid>(all).Count); // every id is distinct
+        foreach (var ids in sequences)
+            for (var i = 1; i < ids.Length; i++)
+                Assert.True(Compare(RfcBytes(ids[i - 1]), RfcBytes(ids[i])) < 0, "a thread observed ids out of order");
+
+        var all = sequences.SelectMany(s => s).ToArray();
+        Assert.Equal(all.Length, new HashSet<Guid>(all).Count);
+
+        // Global order: anything minted after the burst sorts after everything minted during it.
+        var last = RfcBytes(Uuid.Create());
+        Assert.All(all, id => Assert.True(Compare(RfcBytes(id), last) < 0));
     }
 
     private static int Compare(byte[] left, byte[] right)

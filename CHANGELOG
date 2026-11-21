@@ -1,3 +1,14 @@
+# 2026-11-21
+
+- Behavior change (CloudMesh.Uuid): `Uuid.Create()` is now strictly increasing within a process, across threads.
+  It implements RFC 9562 §6.2 method 1: a 16-bit counter sits directly below the 48-bit timestamp and is seeded
+  randomly each millisecond, so collision resistance across processes stays about the same. Ids never go
+  backwards, even if the system clock does; under extreme load they may run slightly ahead of the clock.
+  The signature is unchanged.
+  - Cost: about 3 ns more per id on one thread. All callers share one lock-free counter, so under heavy
+    multi-threaded load throughput plateaus at roughly 35-50M ids/s per process instead of scaling with cores.
+  - `Uuid.Next(...)` overloads are unchanged: they stamp the given time with random bits and don't use the counter.
+
 # v2.0.1
 
 - Feature: Added timeout handling to DataBlock. See the examples/DataBlocks/TimeoutSample for more information.
