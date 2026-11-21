@@ -1,53 +1,46 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using CloudMesh.Internal;
 
 namespace CloudMesh;
 
-// This is the exact same implementation as dotnet 9, except we're using Random.Shared (XoShiro implementation) to fill
-// the counter-bits instead of relying on a legacy Ole32 interop call (which is a lot slower). We also rely on
-// FastClock.UnixTimeMillisecondsNow() to generate the timestamp, which is a lot faster than
-// DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().
-// Random.Shared is thread-safe (a lock-free, per-thread Xoshiro), so Create()/Next() can be called concurrently.
-
-/* Benchmarks:
-| Method               | Mean     | Error    | StdDev   | Allocated |
-|--------------------- |---------:|---------:|---------:|----------:|
-| DotNetNewGuid        | 30.70 ns | 0.287 ns | 0.254 ns |         - | Guid.NewGuid() - Baseline
-| DotNetCreateVersion7 | 49.59 ns | 0.276 ns | 0.231 ns |         - | Guid.CreateVersion7()
-| CloudMeshUuid        | 20.08 ns | 0.142 ns | 0.133 ns |         - | Uuid.Create()
-   
-We can see that this is the fastest approach to generating a v7 compatible UUID.
-In dotnet 10, Guid.CreateVersion7() uses DateTimeOffset.Now.ToUnixTimeMilliseconds() to generate the timestamp, which is a lot slower than using a high resolution timestamp.
-It also uses Ole32.CoCreateGuid() which is also slower than using a random number generator.
-Therein lies the reason why Guid.CreateVersion7() is so slow.
-*/
+// Uuid.Create() mints UUID v7 values that are strictly increasing within a process (RFC 9562 §6.2 method 1:
+// a counter directly below the timestamp). Entropy comes from Random.Shared (a per-thread, lock-free
+// Xoshiro256**), not a CSPRNG: these ids are meant for message ids and time-sortable primary keys, not as
+// unguessable tokens. The timestamp comes from FastClock, which is cheaper than DateTimeOffset.UtcNow.
+//
+// Benchmarks (.NET 11, x64, short runs). Contended = wall time per id with N threads minting at once.
+// | Method                | 1 thread | 4 threads | 32 threads |
+// |---------------------- |---------:|----------:|-----------:|
+// | Guid.NewGuid()        |  ~34 ns  |  ~12 ns   |  ~2.8 ns   |
+// | Guid.CreateVersion7() |  ~53 ns  |  ~20 ns   |  ~4.1 ns   |
+// | Uuid.Create()         |  ~25 ns  |  ~19 ns   |   ~29 ns   |
+// Ordering costs ~3 ns per id on one thread. Under heavy contention every caller takes turns on one shared
+// 64-bit word, so throughput plateaus at roughly 35-50M ids/s per process instead of scaling with cores.
 
 /// <summary>
-/// Generates time-sortable <see cref="Guid"/> values that conform to UUID version 7 (RFC 9562) — faster and
-/// allocation-free compared to <see cref="Guid.NewGuid"/> and <c>Guid.CreateVersion7()</c>.
+/// Generates time-sortable <see cref="Guid"/> values that conform to UUID version 7 (RFC 9562).
+/// <see cref="Create"/> is strictly increasing within a process, across threads.
 /// </summary>
 /// <remarks>
 /// <para>
-/// A v7 UUID puts a 48-bit Unix-millisecond timestamp in its high bits, so values generated over time sort
-/// (both as text and as bytes) in roughly chronological order. That makes them far friendlier to database
-/// index locality than random <see cref="Guid"/>s while remaining 128-bit globally unique. Returned as a plain
-/// <see cref="Guid"/>, so they drop into any API expecting one (EF Core keys, <c>Guid</c> columns, etc.).
+/// A v7 UUID puts a 48-bit Unix-millisecond timestamp in its high bits, so values generated over time sort in
+/// chronological order when compared in RFC (big-endian) byte order. Returned as a plain <see cref="Guid"/>,
+/// so they drop into any API expecting one (EF Core keys, <c>Guid</c> columns, etc.).
 /// </para>
 /// <para>
-/// The timestamp comes from <see cref="FastClock"/>, which tracks the system clock (re-anchoring on NTP
-/// corrections and VM suspend/resume), so the time embedded in the UUID stays accurate while generation
-/// remains fast and allocation-free. The bits below the timestamp are filled entirely from
-/// <see cref="Random.Shared"/> (Xoshiro256**); there is no per-machine node id and no monotonic counter, so
-/// two UUIDs minted in the same millisecond have no guaranteed ordering relative to each other. If you need a
-/// strictly increasing, node-aware id, use a snowflake-style id instead.
+/// <see cref="Create"/> places a 16-bit counter directly below the timestamp, so ids minted in the same
+/// millisecond keep their generation order. The <c>Next</c> overloads stamp a caller-supplied time and do
+/// not use the counter: their random bits are not ordered, and they never affect what <see cref="Create"/>
+/// returns.
 /// </para>
 /// <para>
-/// Based on the .NET 9 implementation, but using Xoshiro256** for random generation rather than the OLE32
-/// interop call <c>CoCreateGuid</c> used by <see cref="Guid.NewGuid"/>. All entropy bits are random.
+/// Random bits come from <see cref="Random.Shared"/> (Xoshiro256**), which is fast but not cryptographically
+/// secure. Don't use these ids as unguessable tokens. Also note that a process restored from the same
+/// snapshot more than once (e.g. Lambda SnapStart, VM clones) resumes with identical generator state.
 /// </para>
 /// <example>
 /// <code>
-/// Guid id = Uuid.Create();                       // v7 UUID stamped with "now"
+/// Guid id = Uuid.Create();                       // v7 UUID stamped with "now", strictly increasing
 /// Guid backfilled = Uuid.Next(createdAt);        // v7 UUID for a known DateTimeOffset
 /// </code>
 /// </example>
@@ -55,11 +48,34 @@ Therein lies the reason why Guid.CreateVersion7() is so slow.
 public static class Uuid
 {
     /// <summary>
-    /// Creates a new UUID v7 stamped with the current time (from <see cref="FastClock"/>). This is the common
-    /// entry point and is the fastest, allocation-free path.
+    /// Creates a new UUID v7 stamped with the current time. Every value is strictly greater than every value
+    /// previously returned by this method in the current process, across all threads.
     /// </summary>
-    /// <returns>A time-sortable v7 <see cref="Guid"/>.</returns>
-    public static Guid Create() => Next(FastClock.UnixTimeMillisecondsNow());
+    /// <remarks>
+    /// <para>
+    /// Implements RFC 9562 §6.2 method 1 (fixed-length dedicated counter). A 16-bit counter sits directly below
+    /// the 48-bit timestamp: its high 12 bits fill <c>rand_a</c> and its low 4 bits the top of <c>rand_b</c>,
+    /// below the variant. The remaining 58 bits are random.
+    /// </para>
+    /// <para>
+    /// Timestamp and counter advance together as a single 64-bit word through a lock-free compare-and-swap.
+    /// Each new millisecond seeds the counter with a random 15-bit value (its top bit is a guard that leaves
+    /// room to count up), so ids from different processes keep about the same collision resistance as fully
+    /// random bits. If the system clock steps backwards, or more than about 32k ids are minted in one
+    /// millisecond, the counter carries into the timestamp. Ids may then run slightly ahead of the clock, but
+    /// they never repeat or go backwards.
+    /// </para>
+    /// <para>
+    /// Ordering is per process only. All callers share one word, so under heavy multi-threaded load
+    /// throughput plateaus (roughly 35-50M ids/s per process) rather than scaling with cores.
+    /// </para>
+    /// </remarks>
+    /// <returns>A time-sortable v7 <see cref="Guid"/>, strictly increasing within this process.</returns>
+    public static Guid Create()
+    {
+        var ticket = MonotonicState.NextTicket(FastClock.UnixTimeMillisecondsNow());
+        return FromTicket(ticket);
+    }
 
     /// <summary>
     /// Creates a UUID v7 whose timestamp bits carry the supplied Unix-millisecond value. Useful for
@@ -90,6 +106,26 @@ public static class Uuid
         Unsafe.AsRef(in uuid.GuidFields._b) = (short)(unixTimestampMilliseconds);
         Unsafe.AsRef(in uuid.GuidFields._c) = (short)((uuid.GuidFields._c & ~UuidConstants.VersionMask) | UuidConstants.Version7Value);
         Unsafe.AsRef(in uuid.GuidFields._d) = (byte)((uuid.GuidFields._d & ~UuidConstants.Variant10xxMask) | UuidConstants.Variant10xxValue);
+
+        return uuid.Guid;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveOptimization)]
+    private static unsafe Guid FromTicket(ulong ticket)
+    {
+        var uuid = new UuidLayout();
+        Span<byte> bytes = new(uuid.Bytes, 16);
+        Random.Shared.NextBytes(bytes);
+
+        var unixMs = (long)(ticket >> MonotonicState.CounterBits);
+        var counter = (int)(ticket & MonotonicState.CounterMask);
+
+        Unsafe.AsRef(in uuid.GuidFields._a) = (int)(unixMs >> 16);
+        Unsafe.AsRef(in uuid.GuidFields._b) = (short)unixMs;
+        // version (4 bits) | counter high 12 bits -> rand_a
+        Unsafe.AsRef(in uuid.GuidFields._c) = (short)(UuidConstants.Version7Value | (counter >> 4));
+        // variant (2 bits) | counter low 4 bits | 2 random bits
+        Unsafe.AsRef(in uuid.GuidFields._d) = (byte)(UuidConstants.Variant10xxValue | ((counter & 0xF) << 2) | (uuid.GuidFields._d & 0x3));
 
         return uuid.Guid;
     }
